@@ -4,6 +4,8 @@ import math
 
 p.connect(p.GUI)
 
+#test
+
 p.resetSimulation()
 
 p.setGravity(0,0,-10)
