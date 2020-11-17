@@ -6,6 +6,8 @@ import math
 
 #testik 2
 
+#test 3
+
 p.connect(p.DIRECT)
 
 p.resetSimulation()
