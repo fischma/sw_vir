@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 class f10RaceCarEnv():
-    def __init__(self, animate=False, max_steps=100):
+    def __init__(self, animate=False, max_steps=1000):
         self.animate = animate
         self.max_steps = max_steps
 
@@ -16,22 +16,18 @@ class f10RaceCarEnv():
         assert self.client_ID != -1, "Physics client failed to connect"
 
         # Set simulation world params
-        p.setGravity(0, 0, -9.8, physicsClientId=self.client_ID)
+        p.setGravity(0, 0, -9.8)
         p.setTimeStep(1. / 120.) #mozna neni nutny
-        p.setRealTimeSimulation(0, physicsClientId=self.client_ID)
+        p.setRealTimeSimulation(0)
 
         #track = p.loadURDF("plane.urdf")
-        self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1, physicsClientId=self.client_ID)
-        # otherCar = p.loadURDF("f10_racecar/racecar_differential.urdf", [0,1,.3])
-        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [0, 0, .3], physicsClientId=self.client_ID)
+        self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
+        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [0, 0, .3])
 
         # Input and output dimensions defined in the environment
         #todo
-
         for wheel in range(p.getNumJoints(self.car)):
-            print("joint[", wheel, "]=", p.getJointInfo(self.car, wheel))
             p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
-            p.getJointInfo(self.car, wheel)
 
         self.wheels = [8, 15]
 
@@ -86,7 +82,7 @@ class f10RaceCarEnv():
         self.joints_rads_high = 4.71
         self.joints_rads_diff = self.joints_rads_high - self.joints_rads_low
 
-        #self.targetVelocity = 10
+        self.Velocity = 10
 
         self.stepCtr = 0
 
@@ -113,33 +109,31 @@ class f10RaceCarEnv():
         return (np.array(action) * 0.5 + 0.5) * self.joints_rads_diff + self.joints_rads_low
 
     def getObs(self):
-        torsoVel, torsoAngVel = p.getBaseVelocity(self.car, physicsClientId=self.client_ID)
+        torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
         return torsoVel
 
-    def step(self, targetVelocity, steeringAngle):
+    def step(self, steeringAngle):
         angles = self.norm_to_rads(steeringAngle)
 
-       #for wheel in self.wheels:
-        #    print("wheel", wheel, self.car, targetVelocity)
-        #    p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=targetVelocity, force=0)
-        # otáčí koly - nastavení úhlu zahnutí
-        #for steer in self.steering:
-        #   p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-angles)
+        for wheel in self.wheels:
+            p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=25, force=100.0)
+
+        for steer in self.steering:
+            p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-angles)
 
         # Step the simulation.
-        for i in range(self.sim_steps_per_iter):
-            p.stepSimulation(physicsClientId=self.client_ID)
-            if self.animate: time.sleep(0.004)
+        p.stepSimulation()
+        if self.animate: time.sleep(0.004)
 
         #todo: get new observations
         torsoVelocity = self.getObs()
         x, y, z = torsoVelocity
 
-        velocityRew = np.minimum(y, self.targetVelocity) / self.targetVelocity
+        velocityRew = np.minimum(y, self.Velocity) / self.Velocity
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(angles)
-        env_obs = np.concatenate((scaled_joint_angles).astype(np.float32))
+        env_obs = (scaled_joint_angles).astype(np.float32)
 
         self.stepCtr += 1
 
@@ -153,10 +147,14 @@ class f10RaceCarEnv():
 
 
     def demo(self):
-        p.resetSimulation(physicsClientId=self.client_ID)
         while (True):
+            a = -0.75
             for i in range (self.max_steps):
-                self.step(0, -0.5)
+                if a < -0.45:
+                    a = a + 0.001
+                else:
+                    a = a - 0.05
+                self.step(a)
 
 if __name__ == "__main__":
     env = f10RaceCarEnv(animate=True)
