@@ -46,7 +46,6 @@ def f_wrapper(env, policy):
         reward = 0
         done = False
         obs = env.reset()
-
         # Map the weight vector to your policy
         policy.set_params(w)
         act=[0,0]
@@ -111,7 +110,7 @@ if __name__ == "__main__":
     #train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
     max_steps = 1000
-    N_training_iters = 10000
+    N_training_iters = 100
     w_best = None
 
     if train:

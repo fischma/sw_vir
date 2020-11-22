@@ -129,8 +129,8 @@ class f10RaceCarEnv():
         angles = self.norm_to_rads(steeringAngle)
 
 
-        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity[0], force=100.0)
-        p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity[1], force=100.0)
+        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity[0], force=50.0)
+        p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity[1], force=50.0)
 
         p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-angles[0])
         p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=-angles[1])
@@ -155,30 +155,29 @@ class f10RaceCarEnv():
 
         # This condition terminates the episode
         done = self.stepCtr > self.max_steps
-
         return env_obs, velocityRew, done
 
     def reset(self):
-        self.step_ctr = 0  # Counts the amount of steps done in the current episode
+        self.stepCtr = 0  # Counts the amount of steps done in the current episode
 
         # Reset the robot to initial position and orientation and null the motors
-        joint_init_pos_list = self.norm_to_rads([0] * 19)
-        [p.resetJointState(self.car, i, joint_init_pos_list[i], 0) for i in range(19)]
+        #joint_init_pos_list = self.norm_to_rads([0] * 19)
+        #[p.resetJointState(self.car, i, joint_init_pos_list[i], 0) for i in range(19)]
         p.resetBasePositionAndOrientation(self.car, [0, 0, .3], [0, 0, 0, 1])
 
-        for wheel in range(p.getNumJoints(self.car)):
-            p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
+        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
+        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
 
-        for steer in self.steering:
-            p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-0.5)
-
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-0.5)
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-0.5)
 
         # Step a few times so stuff settles down
         for i in range(10):
             p.stepSimulation()
+        if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step([0, 0],[10, 10])
+        obs, _, _ = self.step([0,0],[10, 10])
         return obs
 
 
