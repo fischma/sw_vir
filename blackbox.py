@@ -54,7 +54,7 @@ def f_wrapper(env, policy):
             # Get action from policy
             act[0],act[1],vel[0],vel[1] = policy.forward(obs)
             vel = [10,10]
-            act[1] = act[0]
+            #act[1] = act[0]
             # Step environment
             obs, rew, done = env.step(act, vel)
             #print(obs, rew, done)
@@ -77,7 +77,7 @@ def my_opt(f, w_init, iters):
     for i in range(iters):
         w = np.copy(w_best)
         for j in range(6):
-            w[j] = w_best[j] + random.gauss(0, 0.01)
+            w[j] = w_best[j] + random.gauss(0, 0.05)
         curr_rew = f(w)
         if curr_rew > r_best:
             w_best = w

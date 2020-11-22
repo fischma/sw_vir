@@ -114,6 +114,7 @@ class f10RaceCarEnv():
 
     def getObs(self):
         #todo: write better getObs function
+        torso_pos, torso_quat = p.getBasePositionAndOrientation(self.car)
         torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
 
         obs = p.getJointStates(self.car, range(19))
@@ -123,7 +124,7 @@ class f10RaceCarEnv():
             if i == 0 or i == 2:
                 joint_angles.append(o[0])
             i +=1
-        return torsoVel, joint_angles
+        return torso_pos, joint_angles
 
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
@@ -132,8 +133,8 @@ class f10RaceCarEnv():
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity[0], force=50.0)
         p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity[1], force=50.0)
 
-        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-angles[0])
-        p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=-angles[1])
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=angles[0])
+        p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=angles[1])
 
         # Step the simulation.
         p.stepSimulation()
@@ -144,7 +145,9 @@ class f10RaceCarEnv():
         x, y, z = torsoVelocity
 
         #todo: write better reward function
-        velocityRew = np.minimum(y, self.Velocity) / self.Velocity
+        #velocityRew = np.minimum(y+x, self.Velocity) / self.Velocity
+        velocityRew = y + x
+        r_pos = (velocityRew * 1.0) / self.max_steps * 100
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
@@ -155,7 +158,7 @@ class f10RaceCarEnv():
 
         # This condition terminates the episode
         done = self.stepCtr > self.max_steps
-        return env_obs, velocityRew, done
+        return env_obs, r_pos, done
 
     def reset(self):
         self.stepCtr = 0  # Counts the amount of steps done in the current episode
@@ -168,8 +171,8 @@ class f10RaceCarEnv():
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
 
-        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-0.5)
-        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-0.5)
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=0)
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=0)
 
         # Step a few times so stuff settles down
         for i in range(10):
