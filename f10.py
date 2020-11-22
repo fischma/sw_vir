@@ -21,8 +21,8 @@ class f10RaceCarEnv():
         p.setRealTimeSimulation(0)
 
         # Input and output dimensions defined in the environment
-        self.obs_dim = 2
-        self.act_dim = 2
+        self.obs_dim = 4
+        self.act_dim = 4
 
 
         #track = p.loadURDF("plane.urdf")
@@ -86,7 +86,7 @@ class f10RaceCarEnv():
         self.joints_rads_high = 4.71
         self.joints_rads_diff = self.joints_rads_high - self.joints_rads_low
 
-        self.Velocity = 10
+        self.Velocity = 1
 
         self.stepCtr = 0
 
@@ -118,20 +118,22 @@ class f10RaceCarEnv():
 
         obs = p.getJointStates(self.car, range(19))
         joint_angles = []
+        i=0
         for o in obs:
-            if o == 0 or o==2:
+            if i == 0 or i == 2:
                 joint_angles.append(o[0])
-
+            i +=1
         return torsoVel, joint_angles
 
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
 
-        for wheel in self.wheels:
-            p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=velocity, force=100.0)
 
-        for steer in self.steering:
-            p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-angles)
+        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity[0], force=100.0)
+        p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity[1], force=100.0)
+
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=-angles[0])
+        p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=-angles[1])
 
         # Step the simulation.
         p.stepSimulation()
@@ -146,8 +148,8 @@ class f10RaceCarEnv():
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
-        #env_obs = np.concatenate((scaled_joint_angles, velocity)).astype(np.float32)
-        env_obs = [scaled_joint_angles, velocity]
+        env_obs = np.concatenate((scaled_joint_angles, velocity)).astype(np.float32)
+        #env_obs = [scaled_joint_angles, velocity]
 
         self.stepCtr += 1
 
@@ -176,8 +178,7 @@ class f10RaceCarEnv():
             p.stepSimulation()
 
         # Return initial obs
-        obs, _, _ = self.step(0.5,0)
-        #print("obs=", obs)
+        obs, _, _ = self.step([0, 0],[10, 10])
         return obs
 
 
@@ -189,7 +190,7 @@ class f10RaceCarEnv():
                     a = a + 0.001
                 else:
                     a = a - 0.05
-                self.step(a,10)
+                self.step([a,a],[10,10])
             self.reset()
 
     def close(self):
