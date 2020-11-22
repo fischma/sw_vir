@@ -25,7 +25,6 @@ class f10RaceCarEnv():
         self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [0, 0, .3])
 
         # Input and output dimensions defined in the environment
-        #todo
         for wheel in range(p.getNumJoints(self.car)):
             p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
 
@@ -109,6 +108,7 @@ class f10RaceCarEnv():
         return (np.array(action) * 0.5 + 0.5) * self.joints_rads_diff + self.joints_rads_low
 
     def getObs(self):
+        #todo: write better getObs function
         torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
         return torsoVel
 
@@ -129,6 +129,7 @@ class f10RaceCarEnv():
         torsoVelocity = self.getObs()
         x, y, z = torsoVelocity
 
+        #todo: write better reward function
         velocityRew = np.minimum(y, self.Velocity) / self.Velocity
 
         # Scale joint angles and make the policy observation
@@ -143,7 +144,27 @@ class f10RaceCarEnv():
         return env_obs, velocityRew, done
 
     def reset(self):
-        self.stepCtr = 0
+        self.step_ctr = 0  # Counts the amount of steps done in the current episode
+
+        # Reset the robot to initial position and orientation and null the motors
+        joint_init_pos_list = self.norm_to_rads([0] * 19)
+        [p.resetJointState(self.car, i, joint_init_pos_list[i], 0) for i in range(19)]
+        p.resetBasePositionAndOrientation(self.car, [0, 0, .3], [0, 0, 0, 1])
+
+        for wheel in range(p.getNumJoints(self.car)):
+            p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
+
+        for steer in self.steering:
+            p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-0.5)
+
+
+        # Step a few times so stuff settles down
+        for i in range(10):
+            p.stepSimulation()
+
+        # Return initial obs
+        obs, _, _ = self.step(0.5)
+        return obs
 
 
     def demo(self):
@@ -155,6 +176,7 @@ class f10RaceCarEnv():
                 else:
                     a = a - 0.05
                 self.step(a)
+            self.reset()
 
 if __name__ == "__main__":
     env = f10RaceCarEnv(animate=True)
