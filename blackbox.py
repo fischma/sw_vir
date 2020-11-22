@@ -21,25 +21,22 @@ class PolicyNet():
         # This function takes in a list w and maps it to your policy parameters.
         # The simplest way is to probably make an array out of the w vector and reshape it appropriately
         dim = self.obsDim*self.actDim
-        w1 = w[:dim]
         self.b = w[dim:]
-        self.w = np.reshape(w1, (self.actDim, self.obsDim))
+        self.w = np.reshape(w[:dim], (self.actDim, self.obsDim))
 
     def get_params(self):
         # This function returns a list w from your policy parameters. You can use numpy's flatten() function
-        dim = self.obsDim * self.actDim
-        w1 = np.reshape(self.w, dim)
-        w1 = np.append(w1, self.b)
-        w = w1.flatten(order='C')
-        # w = []
-        # for i in range (252):
-        #    w.append(w1[i])
-
+        #dim = self.obsDim * self.actDim
+        #w1 = np.reshape(self.w, dim)
+        #w1 = np.append(w1, self.b)
+        #w = w1.flatten(order='C')
+        w = np.concatenate((self.w.flatten(), self.b.T))
         return w
 
     def forward(self, x):
         # print("w=",self.w)
         a = self.w @ x + self.b
+        print(a,self.w,self.b,x)
         # Performs the forward pass on your policy. Maps observation input x to action output a
         return a
 
@@ -55,10 +52,11 @@ def f_wrapper(env, policy):
 
         while not done:
             # Get action from policy
-            act = policy.forward(obs)
+            [act,vel] = policy.forward(obs)
 
             # Step environment
-            obs, rew, done, _ = env.step(act)
+            obs, rew, done = env.step(act, vel)
+            #print(obs, rew, done)
 
             reward += rew
         return reward
@@ -77,8 +75,8 @@ def my_opt(f, w_init, iters):
     # curr_rew = 0
     for i in range(iters):
         w = np.copy(w_best)
-        for j in range(252):
-            w[j] = w_best[j] + random.gauss(0, 0.05)
+        for j in range(6):
+            w[j] = w_best[j] + random.gauss(0, 0.1)
         curr_rew = f(w)
         if curr_rew > r_best:
             w_best = w
@@ -107,11 +105,11 @@ def test(w_best, max_steps=70, animate=False):
 
 
 if __name__ == "__main__":
-    # train = True
+    #train = True
     train = False
-    policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'agents/f10_bbx.npy')
-    max_steps = 70
-    N_training_iters = 200
+    policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
+    max_steps = 5000
+    N_training_iters = 10000
     w_best = None
 
     if train:

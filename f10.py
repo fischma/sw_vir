@@ -20,6 +20,11 @@ class f10RaceCarEnv():
         p.setTimeStep(1. / 120.) #mozna neni nutny
         p.setRealTimeSimulation(0)
 
+        # Input and output dimensions defined in the environment
+        self.obs_dim = 2
+        self.act_dim = 2
+
+
         #track = p.loadURDF("plane.urdf")
         self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
         self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [0, 0, .3])
@@ -112,11 +117,11 @@ class f10RaceCarEnv():
         torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
         return torsoVel
 
-    def step(self, steeringAngle):
+    def step(self, steeringAngle,velocity):
         angles = self.norm_to_rads(steeringAngle)
 
         for wheel in self.wheels:
-            p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=25, force=100.0)
+            p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=velocity, force=100.0)
 
         for steer in self.steering:
             p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-angles)
@@ -134,7 +139,8 @@ class f10RaceCarEnv():
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(angles)
-        env_obs = (scaled_joint_angles).astype(np.float32)
+        #env_obs = np.concatenate((scaled_joint_angles, velocity)).astype(np.float32)
+        env_obs = [scaled_joint_angles, velocity]
 
         self.stepCtr += 1
 
@@ -163,7 +169,8 @@ class f10RaceCarEnv():
             p.stepSimulation()
 
         # Return initial obs
-        obs, _, _ = self.step(0.5)
+        obs, _, _ = self.step(0.5,0)
+        #print("obs=", obs)
         return obs
 
 
@@ -175,7 +182,7 @@ class f10RaceCarEnv():
                     a = a + 0.001
                 else:
                     a = a - 0.05
-                self.step(a)
+                self.step(a,10)
             self.reset()
 
     def close(self):
