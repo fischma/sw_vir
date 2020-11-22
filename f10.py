@@ -115,9 +115,16 @@ class f10RaceCarEnv():
     def getObs(self):
         #todo: write better getObs function
         torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
-        return torsoVel
 
-    def step(self, steeringAngle,velocity):
+        obs = p.getJointStates(self.car, range(19))
+        joint_angles = []
+        for o in obs:
+            if o == 0 or o==2:
+                joint_angles.append(o[0])
+
+        return torsoVel, joint_angles
+
+    def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
 
         for wheel in self.wheels:
@@ -131,14 +138,14 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.004)
 
         #todo: get new observations
-        torsoVelocity = self.getObs()
+        torsoVelocity, newAngle = self.getObs()
         x, y, z = torsoVelocity
 
         #todo: write better reward function
         velocityRew = np.minimum(y, self.Velocity) / self.Velocity
 
         # Scale joint angles and make the policy observation
-        scaled_joint_angles = self.rads_to_norm(angles)
+        scaled_joint_angles = self.rads_to_norm(newAngle)
         #env_obs = np.concatenate((scaled_joint_angles, velocity)).astype(np.float32)
         env_obs = [scaled_joint_angles, velocity]
 
