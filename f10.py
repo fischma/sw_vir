@@ -178,6 +178,9 @@ class f10RaceCarEnv():
                 self.step(a)
             self.reset()
 
+    def close(self):
+        p.disconnect(physicsClientId=self.client_ID)
+
 if __name__ == "__main__":
     env = f10RaceCarEnv(animate=True)
     env.demo()
