@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import random
-from f10 import f10RaceCarEnv
+from Semestralka.f10 import f10RaceCarEnv
 
 
 # This script will run correctly assuming you have pythonpath pointing to the src directory. If you open a pycharm project inside the hw_1 file from sources then pythonpath should be set automatically
@@ -36,7 +36,7 @@ class PolicyNet():
     def forward(self, x):
         # print("w=",self.w)
         a = self.w @ x + self.b
-        print(a,self.w,self.b,x)
+        #print(a,self.w,self.b,x)
         # Performs the forward pass on your policy. Maps observation input x to action output a
         return a
 
@@ -49,11 +49,13 @@ def f_wrapper(env, policy):
 
         # Map the weight vector to your policy
         policy.set_params(w)
-
+        act=[0,0]
+        vel=[0,0]
         while not done:
             # Get action from policy
-            [act,vel] = policy.forward(obs)
-
+            act[0],act[1],vel[0],vel[1] = policy.forward(obs)
+            vel = [10,10]
+            act[1] = act[0]
             # Step environment
             obs, rew, done = env.step(act, vel)
             #print(obs, rew, done)
@@ -76,7 +78,7 @@ def my_opt(f, w_init, iters):
     for i in range(iters):
         w = np.copy(w_best)
         for j in range(6):
-            w[j] = w_best[j] + random.gauss(0, 0.1)
+            w[j] = w_best[j] + random.gauss(0, 0.01)
         curr_rew = f(w)
         if curr_rew > r_best:
             w_best = w
@@ -105,10 +107,10 @@ def test(w_best, max_steps=70, animate=False):
 
 
 if __name__ == "__main__":
-    #train = True
-    train = False
+    train = True
+    #train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
-    max_steps = 5000
+    max_steps = 1000
     N_training_iters = 10000
     w_best = None
 
