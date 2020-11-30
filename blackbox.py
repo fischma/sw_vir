@@ -54,7 +54,7 @@ def f_wrapper(env, policy):
             # Get action from policy
             act[0],act[1],vel[0],vel[1] = policy.forward(obs)
             vel = [10,10]
-            #act[1] = act[0]
+            act[1] = act[0]
             # Step environment
             obs, rew, done = env.step(act, vel)
             #print(obs, rew, done)
@@ -107,7 +107,7 @@ def test(w_best, max_steps=70, animate=False):
 
 if __name__ == "__main__":
     train = True
-    #train = False
+    train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
     max_steps = 1000
     N_training_iters = 100

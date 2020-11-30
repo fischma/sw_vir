@@ -163,7 +163,7 @@ class f10RaceCarEnv():
             if (hitFraction == 1.):
                 p.addUserDebugLine(self.rayFrom[i], self.rayTo[i], self.rayMissColor, replaceItemUniqueId=self.rayIds[i],
                                    parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
-
+                print(self.rayFrom[i], self.rayTo[i])
             else:
                 localHitTo = [self.rayFrom[i][0] + hitFraction * (self.rayTo[i][0] - self.rayFrom[i][0]),
                               self.rayFrom[i][1] + hitFraction * (self.rayTo[i][1] - self.rayFrom[i][1]),
