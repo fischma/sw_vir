@@ -36,6 +36,7 @@ class PolicyNet():
     def forward(self, x):
         # print("w=",self.w)
         a = self.w @ x + self.b
+
         #print(a,self.w,self.b,x)
         # Performs the forward pass on your policy. Maps observation input x to action output a
         return a
@@ -48,14 +49,14 @@ def f_wrapper(env, policy):
         obs = env.reset()
         # Map the weight vector to your policy
         policy.set_params(w)
-        act=[0,0]
-        vel=[0,0]
+        act=0
+        vel=0
         while not done:
             # Get action from policy
-            act[0],act[1],vel[0],vel[1] = policy.forward(obs)
-            vel = [10,10]
-            act[1] = act[0]
+            act,vel = policy.forward(obs)
             # Step environment
+            vel = 10 + vel
+            #print(act,vel)
             obs, rew, done = env.step(act, vel)
             #print(obs, rew, done)
 
@@ -76,7 +77,7 @@ def my_opt(f, w_init, iters):
     # curr_rew = 0
     for i in range(iters):
         w = np.copy(w_best)
-        for j in range(6):
+        for j in range(26):
             w[j] = w_best[j] + random.gauss(0, 0.05)
         curr_rew = f(w)
         if curr_rew > r_best:
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     train = True
     train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
-    max_steps = 1000
+    max_steps = 500
     N_training_iters = 100
     w_best = None
 

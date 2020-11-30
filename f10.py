@@ -21,8 +21,8 @@ class f10RaceCarEnv():
         p.setRealTimeSimulation(0)
 
         # Input and output dimensions defined in the environment
-        self.obs_dim = 4
-        self.act_dim = 4
+        self.obs_dim = 12
+        self.act_dim = 2
 
 
         #track = p.loadURDF("plane.urdf")
@@ -142,22 +142,22 @@ class f10RaceCarEnv():
         torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
 
         obs = p.getJointStates(self.car, range(19))
-        joint_angles = []
         i=0
         for o in obs:
-            if i == 0 or i == 2:
-                joint_angles.append(o[0])
-            i +=1
+            if i == 0:
+                joint_angles=o[0]
+            i+=1
         return torso_pos, joint_angles
 
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
-
+        hitArray =[]
         numThreads = 0
         results = p.rayTestBatch(self.rayFrom, self.rayTo, numThreads, parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
         for i in range(self.numRays):
             hitObjectUid = results[i][0]
             hitFraction = results[i][2]
+            hitArray.append(hitFraction)
             hitPosition = results[i][3]
 
             if (hitFraction == 1.):
@@ -172,11 +172,11 @@ class f10RaceCarEnv():
                                    parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
 
 
-        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity[0], force=50.0)
-        p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity[1], force=50.0)
+        p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity, force=50.0)
+        p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity, force=50.0)
 
-        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=angles[0])
-        p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=angles[1])
+        p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=angles)
+        p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=angles)
 
         # Step the simulation.
         p.stepSimulation()
@@ -188,13 +188,16 @@ class f10RaceCarEnv():
 
         #todo: write better reward function
         #velocityRew = np.minimum(y+x, self.Velocity) / self.Velocity
-        velocityRew = np.sin(x*y)
+        velocityRew = x*y
         r_pos = (velocityRew * 1.0) / self.max_steps * 100
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
-        env_obs = np.concatenate((scaled_joint_angles, velocity)).astype(np.float32)
-        #env_obs = [scaled_joint_angles, velocity]
+
+        env_obs = [scaled_joint_angles, velocity]
+        for i in range(10):
+            env_obs.append(hitArray[i])
+        #print(env_obs)
 
         self.stepCtr += 1
 
@@ -222,7 +225,7 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step([0,0],[10, 10])
+        obs, _, _ = self.step(0,10)
         return obs
 
 
@@ -235,7 +238,7 @@ class f10RaceCarEnv():
                         a = a + 0.001
                 else:
                     a = 0.5
-                self.step([-a,-a],[10,10])
+                self.step(-a,10)
             self.reset()
 
     def close(self):
