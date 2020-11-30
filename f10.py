@@ -89,6 +89,30 @@ class f10RaceCarEnv():
         self.Velocity = 1
 
         self.stepCtr = 0
+        self.hokuyo_joint = 4
+
+        # nastaveni paprsku
+        self.replaceLines = True
+        self.numRays = 10
+        self.rayFrom = []
+        self.rayTo = []
+        self.rayIds = []
+        self.rayHitColor = [1, 0, 0]
+        self.rayMissColor = [0, 1, 0]
+        self.rayLen = 2.5
+        self.rayStartLen = 0.25
+        for i in range(self.numRays):
+
+            self.rayFrom.append(
+                [self.rayStartLen * math.sin(-0.5 * 0.25 * 2. * math.pi + 0.75 * 2. * math.pi * float(i) / self.numRays),
+                 self.rayStartLen * math.cos(-0.5 * 0.25 * 2. * math.pi + 0.75 * 2. * math.pi * float(i) / self.numRays), 0])
+            self.rayTo.append([self.rayLen * math.sin(-0.5 * 0.25 * 2. * math.pi + 0.75 * 2. * math.pi * float(i) / self.numRays),
+                          self.rayLen * math.cos(-0.5 * 0.25 * 2. * math.pi + 0.75 * 2. * math.pi * float(i) / self.numRays), 0])
+            if (self.replaceLines):
+                self.rayIds.append(p.addUserDebugLine(self.rayFrom[i], self.rayTo[i], self.rayMissColor, parentObjectUniqueId=self.car,
+                                                 parentLinkIndex=self.hokuyo_joint))
+            else:
+                self.rayIds.append(-1)
 
     def getCarYaw(self):
         carPos, carOrn = p.getBasePositionAndOrientation(self.car)
@@ -129,6 +153,22 @@ class f10RaceCarEnv():
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
 
+        numThreads = 0
+        results = p.rayTestBatch(self.rayFrom, self.rayTo, numThreads, parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
+        for i in range(self.numRays):
+            hitObjectUid = results[i][0]
+            hitFraction = results[i][2]
+            hitPosition = results[i][3]
+            if (hitFraction == 1.):
+                p.addUserDebugLine(self.rayFrom[i], self.rayTo[i], self.rayMissColor, replaceItemUniqueId=self.rayIds[i],
+                                   parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
+            else:
+                localHitTo = [self.rayFrom[i][0] + hitFraction * (self.rayTo[i][0] - self.rayFrom[i][0]),
+                              self.rayFrom[i][1] + hitFraction * (self.rayTo[i][1] - self.rayFrom[i][1]),
+                              self.rayFrom[i][2] + hitFraction * (self.rayTo[i][2] - self.rayFrom[i][2])]
+                p.addUserDebugLine(self.rayFrom[i], localHitTo, self.rayHitColor, replaceItemUniqueId=self.rayIds[i],
+                                   parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
+
 
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=velocity[0], force=50.0)
         p.setJointMotorControl2(self.car, self.wheels[1], p.VELOCITY_CONTROL, targetVelocity=velocity[1], force=50.0)
@@ -146,7 +186,7 @@ class f10RaceCarEnv():
 
         #todo: write better reward function
         #velocityRew = np.minimum(y+x, self.Velocity) / self.Velocity
-        velocityRew = y + x
+        velocityRew = np.sin(x*y)
         r_pos = (velocityRew * 1.0) / self.max_steps * 100
 
         # Scale joint angles and make the policy observation
@@ -188,11 +228,12 @@ class f10RaceCarEnv():
         while (True):
             a = -0.75
             for i in range (self.max_steps):
-                if a < -0.45:
-                    a = a + 0.001
+                if i < self.max_steps/5.5:
+                    if a < -0.45:
+                        a = a + 0.001
                 else:
-                    a = a - 0.05
-                self.step([a,a],[10,10])
+                    a = 0.5
+                self.step([-a,-a],[10,10])
             self.reset()
 
     def close(self):
