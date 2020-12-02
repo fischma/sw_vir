@@ -91,6 +91,9 @@ class f10RaceCarEnv():
         self.stepCtr = 0
         self.hokuyo_joint = 4
 
+        self.lastX = 0
+        self.lastY = 0
+
         # nastaveni paprsku
         self.replaceLines = True
         self.numRays = 10
@@ -187,9 +190,13 @@ class f10RaceCarEnv():
         x, y, z = torsoVelocity
 
         #todo: write better reward function
-        #velocityRew = np.minimum(y+x, self.Velocity) / self.Velocity
-        velocityRew = x*y
+        #velocityRew = np.minimum(y+x, self.Velocity) / self.
+
+       # if self.stepCtr%10 == 0 or self.stepCtr == 0:
+        velocityRew = x+y
         r_pos = (velocityRew * 1.0) / self.max_steps * 100
+       # else:
+            #r_pos = 0
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
@@ -208,6 +215,8 @@ class f10RaceCarEnv():
     def reset(self):
         self.stepCtr = 0  # Counts the amount of steps done in the current episode
 
+        self.lastX = 0
+        self.lastY = 0
         # Reset the robot to initial position and orientation and null the motors
         #joint_init_pos_list = self.norm_to_rads([0] * 19)
         #[p.resetJointState(self.car, i, joint_init_pos_list[i], 0) for i in range(19)]
@@ -225,7 +234,7 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step(0,10)
+        obs, _, _ = self.step(0,12)
         return obs
 
 

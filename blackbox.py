@@ -55,7 +55,7 @@ def f_wrapper(env, policy):
             # Get action from policy
             act,vel = policy.forward(obs)
             # Step environment
-            vel = 10 + vel
+            vel = 12 + vel*1.5
             #print(act,vel)
             obs, rew, done = env.step(act, vel)
             #print(obs, rew, done)
@@ -77,7 +77,7 @@ def my_opt(f, w_init, iters):
     # curr_rew = 0
     for i in range(iters):
         w = np.copy(w_best)
-        for j in range(26):
+        for j in range(24):
             w[j] = w_best[j] + random.gauss(0, 0.05)
         curr_rew = f(w)
         if curr_rew > r_best:
@@ -110,10 +110,9 @@ if __name__ == "__main__":
     train = True
     train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
-    max_steps = 500
+    max_steps = 1000
     N_training_iters = 100
     w_best = None
-
     if train:
         # Make the environment and your policy
         env = f10RaceCarEnv(animate=False, max_steps=max_steps)
