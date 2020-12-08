@@ -94,6 +94,8 @@ class f10RaceCarEnv():
         self.lastX = 0
         self.lastY = 0
 
+        self.i = 0
+
         # nastaveni paprsku
         self.replaceLines = True
         self.numRays = 10
@@ -220,7 +222,13 @@ class f10RaceCarEnv():
         # Reset the robot to initial position and orientation and null the motors
         #joint_init_pos_list = self.norm_to_rads([0] * 19)
         #[p.resetJointState(self.car, i, joint_init_pos_list[i], 0) for i in range(19)]
-        p.resetBasePositionAndOrientation(self.car, [0, 0, .3], [0, 0, 0, 1])
+
+        X = [0,11.493200419744126,24.96498657017559,24.87307188808468, 35.60757474635269, 33.53535176554145, 17.869495573984853, 2.1742063003894714 , -13.469216230700594, -24.784372900250176,  -18.17340639021027 ]
+        Y = [0,5.5038210072150795, -2.6576378118176285, 3.3267677733854453, 2.340371546376694, -10.525819436039331,  -10.692318564741319, -10.65286557827287, -10.613216511929613, -2.4196071085931297, 8.06798264769463]
+        p.resetBasePositionAndOrientation(self.car, [X[self.i], Y[self.i], .3], [0, 0, 0, 1])
+        self.i += 1
+        if self.i > 9:
+            self.i = 0
 
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
