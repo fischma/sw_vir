@@ -26,18 +26,11 @@ class PolicyNet():
 
     def get_params(self):
         # This function returns a list w from your policy parameters. You can use numpy's flatten() function
-        #dim = self.obsDim * self.actDim
-        #w1 = np.reshape(self.w, dim)
-        #w1 = np.append(w1, self.b)
-        #w = w1.flatten(order='C')
         w = np.concatenate((self.w.flatten(), self.b.T))
         return w
 
     def forward(self, x):
-        # print("w=",self.w)
         a = self.w @ x + self.b
-
-        #print(a,self.w,self.b,x)
         # Performs the forward pass on your policy. Maps observation input x to action output a
         return a
 
@@ -49,17 +42,12 @@ def f_wrapper(env, policy):
         obs = env.reset()
         # Map the weight vector to your policy
         policy.set_params(w)
-        act=0
-        vel=0
         while not done:
             # Get action from policy
             act,vel = policy.forward(obs)
             # Step environment
-            vel = 12 + vel*1.5
-            #print(act,vel)
+            vel = 10 + vel*1.5
             obs, rew, done = env.step(act, vel)
-            #print(obs, rew, done)
-
             reward += rew
         return reward
 
@@ -70,11 +58,7 @@ def my_opt(f, w_init, iters):
     # Your optimization algorithm. Takes in an evaluation function f, and initial solution guess w_init and returns
     # parameters w_best which 'solve' the problem to some degree.
     w_best = w_init
-    w = w_init
-    # curr_rew = f(w)
-    # r_best = curr_rew
     r_best = 0
-    # curr_rew = 0
     for i in range(iters):
         w = np.copy(w_best)
         for j in range(24):
@@ -83,7 +67,6 @@ def my_opt(f, w_init, iters):
         if curr_rew > r_best:
             w_best = w
             r_best = curr_rew
-            # print(r_best)
 
     return w_best, r_best
 
@@ -108,10 +91,10 @@ def test(w_best, max_steps=70, animate=False):
 
 if __name__ == "__main__":
     train = True
-    train = False
+    #train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
     max_steps = 1000
-    N_training_iters = 100
+    N_training_iters = 50
     w_best = None
     if train:
         # Make the environment and your policy

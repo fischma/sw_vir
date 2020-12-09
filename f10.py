@@ -17,15 +17,13 @@ class f10RaceCarEnv():
 
         # Set simulation world params
         p.setGravity(0, 0, -9.8)
-        p.setTimeStep(1. / 120.) #mozna neni nutny
-        p.setRealTimeSimulation(0)
+        p.setTimeStep(1. / 120.)
+        #p.setRealTimeSimulation(0)
 
         # Input and output dimensions defined in the environment
         self.obs_dim = 12
         self.act_dim = 2
 
-
-        #track = p.loadURDF("plane.urdf")
         self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
         self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [0, 0, .3])
 
@@ -77,24 +75,24 @@ class f10RaceCarEnv():
 
         self.steering = [0, 2]
 
-        self.lastControlTime = time.time()
-
-        self.sim_steps_per_iter = 24
 
         # Limits of our joints. When using the * (multiply) operation on a list, it repeats the list that many times
         self.joints_rads_low = -1.57
         self.joints_rads_high = 4.71
         self.joints_rads_diff = self.joints_rads_high - self.joints_rads_low
 
-        self.Velocity = 1
+        #self.Velocity = 1
 
         self.stepCtr = 0
         self.hokuyo_joint = 4
 
-        self.lastX = 0
-        self.lastY = 0
 
         self.i = 0
+        self.X = [0, 11.493200419744126, 24.96498657017559, 24.87307188808468, 35.60757474635269, 33.53535176554145,
+                  17.869495573984853, 2.1742063003894714, -13.469216230700594, -24.784372900250176, -18.17340639021027]
+        self.Y = [0, 5.5038210072150795, -2.6576378118176285, 3.3267677733854453, 2.340371546376694,
+                  -10.525819436039331, -10.692318564741319, -10.65286557827287, -10.613216511929613,
+                  -2.4196071085931297, 8.06798264769463]
 
         # nastaveni paprsku
         self.replaceLines = True
@@ -119,51 +117,30 @@ class f10RaceCarEnv():
             else:
                 self.rayIds.append(-1)
 
-    def getCarYaw(self):
-        carPos, carOrn = p.getBasePositionAndOrientation(self.car)
-        carEuler = p.getEulerFromQuaternion(carOrn)
-        carYaw = carEuler[2] * 360 / (2. * math.pi) - 90
-        return carYaw
 
     def rads_to_norm(self, joints):
-        '''
-        :param joints: list or array of joint angles in radians
-        :return: array of joint angles normalized to [-1,1]
-        '''
-        sjoints = np.array(joints)
-        sjoints = ((sjoints - self.joints_rads_low) / self.joints_rads_diff) * 2 - 1
+        sjoints = ((joints - self.joints_rads_low) / self.joints_rads_diff) * 2 - 1
         return sjoints
 
     def norm_to_rads(self, action):
-        '''
-        :param action: list or array of normalized joint target angles (from your control policy)
-        :return: array of target joint angles in radians (to be published to simulator)
-        '''
-        return (np.array(action) * 0.5 + 0.5) * self.joints_rads_diff + self.joints_rads_low
+        return (action * 0.5 + 0.5) * self.joints_rads_diff + self.joints_rads_low
 
     def getObs(self):
-        #todo: write better getObs function
         torso_pos, torso_quat = p.getBasePositionAndOrientation(self.car)
-        torsoVel, torsoAngVel = p.getBaseVelocity(self.car)
-
         obs = p.getJointStates(self.car, range(19))
-        i=0
-        for o in obs:
-            if i == 0:
-                joint_angles=o[0]
-            i+=1
+        joint_angles=obs[0][0]
+
         return torso_pos, joint_angles
 
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
         hitArray =[]
         numThreads = 0
+
         results = p.rayTestBatch(self.rayFrom, self.rayTo, numThreads, parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
         for i in range(self.numRays):
-            hitObjectUid = results[i][0]
             hitFraction = results[i][2]
             hitArray.append(hitFraction)
-            hitPosition = results[i][3]
 
             if (hitFraction == 1.):
                 p.addUserDebugLine(self.rayFrom[i], self.rayTo[i], self.rayMissColor, replaceItemUniqueId=self.rayIds[i],
@@ -187,18 +164,20 @@ class f10RaceCarEnv():
         p.stepSimulation()
         if self.animate: time.sleep(0.004)
 
-        #todo: get new observations
-        torsoVelocity, newAngle = self.getObs()
-        x, y, z = torsoVelocity
+        torsoPosition, newAngle = self.getObs()
+        x, y, z = torsoPosition
 
         #todo: write better reward function
-        #velocityRew = np.minimum(y+x, self.Velocity) / self.
 
-       # if self.stepCtr%10 == 0 or self.stepCtr == 0:
-        velocityRew = x+y
+        if self.i < 9:
+            velocityRew = ((self.X[self.i + 1]-self.X[self.i])*(self.X[self.i + 1]-self.X[self.i]) + (self.Y[self.i + 1]-self.Y[self.i])*(self.Y[self.i + 1]-self.Y[self.i ])) - ((self.X[self.i + 1]-x)*(self.X[self.i + 1]-x) + (self.Y[self.i + 1]-y)*(self.Y[self.i + 1]-y))
+
+        else:
+            velocityRew = np.sqrt((self.X[0] - self.X[self.i])*(self.X[0] - self.X[self.i]) + (self.Y[0] - self.Y[self.i])*(self.Y[0] - self.Y[self.i]))-np.sqrt((self.X[0] -x)*(self.X[0] -x) + (self.Y[0] - y)*(self.Y[0] - y))
+
+        #velocityRew = x+y
+        #todo: nomalization of reward
         r_pos = (velocityRew * 1.0) / self.max_steps * 100
-       # else:
-            #r_pos = 0
 
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
@@ -206,7 +185,6 @@ class f10RaceCarEnv():
         env_obs = [scaled_joint_angles, velocity]
         for i in range(10):
             env_obs.append(hitArray[i])
-        #print(env_obs)
 
         self.stepCtr += 1
 
@@ -217,19 +195,15 @@ class f10RaceCarEnv():
     def reset(self):
         self.stepCtr = 0  # Counts the amount of steps done in the current episode
 
-        self.lastX = 0
-        self.lastY = 0
+        self.first = 1
         # Reset the robot to initial position and orientation and null the motors
-        #joint_init_pos_list = self.norm_to_rads([0] * 19)
-        #[p.resetJointState(self.car, i, joint_init_pos_list[i], 0) for i in range(19)]
 
-        X = [0,11.493200419744126,24.96498657017559,24.87307188808468, 35.60757474635269, 33.53535176554145, 17.869495573984853, 2.1742063003894714 , -13.469216230700594, -24.784372900250176,  -18.17340639021027 ]
-        Y = [0,5.5038210072150795, -2.6576378118176285, 3.3267677733854453, 2.340371546376694, -10.525819436039331,  -10.692318564741319, -10.65286557827287, -10.613216511929613, -2.4196071085931297, 8.06798264769463]
-        p.resetBasePositionAndOrientation(self.car, [X[self.i], Y[self.i], .3], [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(self.car, [self.X[self.i], self.Y[self.i], .3], [0, 0, 0, 1])
+        '''
         self.i += 1
-        if self.i > 9:
+        if self.i > 2:
             self.i = 0
-
+        '''
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
 
@@ -242,7 +216,7 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step(0,12)
+        obs, _, _ = self.step(0,10)
         return obs
 
 
