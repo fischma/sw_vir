@@ -38,18 +38,17 @@ class f10RaceCarEnv():
             i = round(25 * math.cos(alpha) - 50)
             j = round(25 * math.sin(alpha) - 72)
             heightfieldData[env_height * i + j] = 1
-        for beta in range(720):
-            i = (23.5 * math.cos(beta/2) - 50)
-            j = (23.5 * math.sin(beta/2) - 72)
-            self.X.append(i-(23.5 * math.cos(0) - 50))
-            self.Y.append(j-(23.5 * math.sin(0) - 72))
+        for beta in range(1080):
+            i = (23 * math.cos(beta/3) - 50)
+            j = (23 * math.sin(beta/3) - 72)
+            self.X.append(i-(23 * math.cos(0) - 50))
+            self.Y.append(j-(23 * math.sin(0) - 72))
             self.amount += 1
-        print(self.X)
-        print(self.Y)
+
 
         terrainShape = p.createCollisionShape(shapeType=p.GEOM_HEIGHTFIELD,
                                               meshScale=[1, 1,
-                                                         0.5],
+                                                         1],
                                               heightfieldTextureScaling=(env_width - 1) / 2,
                                               heightfieldData=heightfieldData,
                                               numHeightfieldRows=env_height,
@@ -66,6 +65,7 @@ class f10RaceCarEnv():
         # Input and output dimensions defined in the environment
         for wheel in range(p.getNumJoints(self.car)):
             p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
+            p.changeDynamics(self.car,wheel,mass = 1,lateralFriction= 1.0)
 
         self.wheels = [8, 15]
 
@@ -210,6 +210,11 @@ class f10RaceCarEnv():
 
         else:
             velocityRew = ((self.X[0] - self.X[self.index])*(self.X[0] - self.X[self.index]) + (self.Y[0] - self.Y[self.index])*(self.Y[0] - self.Y[self.index]))-((self.X[0] -x)*(self.X[0] -x) + (self.Y[0] - y)*(self.Y[0] - y))
+        if ((self.X[self.index + 1]-x)*(self.X[self.index + 1]-x) + (self.Y[self.index + 1]-y)*(self.Y[self.index + 1]-y))<0.1:
+            if self.index <self.amount:
+                self.index += 1
+            else:
+                self.index = 0
         #velocityRew = x+y
         #todo: nomalization of reward
         r_pos = (velocityRew * 1.0) / self.max_steps * 100
@@ -251,7 +256,7 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step(0,10)
+        obs, _, _ = self.step(0,25)
         return obs
 
 
