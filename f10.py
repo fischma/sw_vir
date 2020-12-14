@@ -24,8 +24,44 @@ class f10RaceCarEnv():
         self.obs_dim = 12
         self.act_dim = 2
 
-        self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
-        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [0, 0, .3])
+        env_width = 100
+        env_height = 100
+        self.X=[]
+        self.Y=[]
+        self.index = 0
+        self.amount = 0
+        heightfieldData = np.zeros(env_width * env_height)
+        for alpha in range(360):
+            i = round(19*math.cos(alpha)-50)
+            j = round(19*math.sin(alpha)-72)
+            heightfieldData[env_height*i+j] = 1
+            i = round(25 * math.cos(alpha) - 50)
+            j = round(25 * math.sin(alpha) - 72)
+            heightfieldData[env_height * i + j] = 1
+        for beta in range(720):
+            i = (23.5 * math.cos(beta/2) - 50)
+            j = (23.5 * math.sin(beta/2) - 72)
+            self.X.append(i-(23.5 * math.cos(0) - 50))
+            self.Y.append(j-(23.5 * math.sin(0) - 72))
+            self.amount += 1
+        print(self.X)
+        print(self.Y)
+
+        terrainShape = p.createCollisionShape(shapeType=p.GEOM_HEIGHTFIELD,
+                                              meshScale=[1, 1,
+                                                         0.5],
+                                              heightfieldTextureScaling=(env_width - 1) / 2,
+                                              heightfieldData=heightfieldData,
+                                              numHeightfieldRows=env_height,
+                                              numHeightfieldColumns=env_width,
+                                              physicsClientId=self.client_ID)
+
+        mass = 0
+        terrain = p.createMultiBody(mass,terrainShape)
+        p.resetBasePositionAndOrientation(terrain,[0,0,0],[0,0,0,1])
+
+        #self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
+        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [self.X[0], self.Y[0], .3],[0,0,1,1])
 
         # Input and output dimensions defined in the environment
         for wheel in range(p.getNumJoints(self.car)):
@@ -87,13 +123,14 @@ class f10RaceCarEnv():
         self.hokuyo_joint = 4
 
 
-        self.i = 0
-        self.X = [0, 11.493200419744126, 24.96498657017559, 24.87307188808468, 35.60757474635269, 33.53535176554145,
+
+        '''
+        #self.X = [0, 11.493200419744126, 24.96498657017559, 24.87307188808468, 35.60757474635269, 33.53535176554145,
                   17.869495573984853, 2.1742063003894714, -13.469216230700594, -24.784372900250176, -18.17340639021027]
-        self.Y = [0, 5.5038210072150795, -2.6576378118176285, 3.3267677733854453, 2.340371546376694,
+        #self.Y = [0, 5.5038210072150795, -2.6576378118176285, 3.3267677733854453, 2.340371546376694,
                   -10.525819436039331, -10.692318564741319, -10.65286557827287, -10.613216511929613,
                   -2.4196071085931297, 8.06798264769463]
-
+        '''
         # nastaveni paprsku
         self.replaceLines = True
         self.numRays = 10
@@ -102,7 +139,7 @@ class f10RaceCarEnv():
         self.rayIds = []
         self.rayHitColor = [1, 0, 0]
         self.rayMissColor = [0, 1, 0]
-        self.rayLen = 2.5
+        self.rayLen = 8
         self.rayStartLen = 0.25
         for i in range(self.numRays):
 
@@ -166,15 +203,13 @@ class f10RaceCarEnv():
 
         torsoPosition, newAngle = self.getObs()
         x, y, z = torsoPosition
-
         #todo: write better reward function
 
-        if self.i < 9:
-            velocityRew = ((self.X[self.i + 1]-self.X[self.i])*(self.X[self.i + 1]-self.X[self.i]) + (self.Y[self.i + 1]-self.Y[self.i])*(self.Y[self.i + 1]-self.Y[self.i ])) - ((self.X[self.i + 1]-x)*(self.X[self.i + 1]-x) + (self.Y[self.i + 1]-y)*(self.Y[self.i + 1]-y))
+        if self.index < self.amount:
+            velocityRew = ((self.X[self.index + 1]-self.X[self.index])*(self.X[self.index+ 1]-self.X[self.index]) + (self.Y[self.index + 1]-self.Y[self.index])*(self.Y[self.index + 1]-self.Y[self.index ])) - ((self.X[self.index + 1]-x)*(self.X[self.index + 1]-x) + (self.Y[self.index + 1]-y)*(self.Y[self.index + 1]-y))
 
         else:
-            velocityRew = np.sqrt((self.X[0] - self.X[self.i])*(self.X[0] - self.X[self.i]) + (self.Y[0] - self.Y[self.i])*(self.Y[0] - self.Y[self.i]))-np.sqrt((self.X[0] -x)*(self.X[0] -x) + (self.Y[0] - y)*(self.Y[0] - y))
-
+            velocityRew = ((self.X[0] - self.X[self.index])*(self.X[0] - self.X[self.index]) + (self.Y[0] - self.Y[self.index])*(self.Y[0] - self.Y[self.index]))-((self.X[0] -x)*(self.X[0] -x) + (self.Y[0] - y)*(self.Y[0] - y))
         #velocityRew = x+y
         #todo: nomalization of reward
         r_pos = (velocityRew * 1.0) / self.max_steps * 100
@@ -198,11 +233,11 @@ class f10RaceCarEnv():
         self.first = 1
         # Reset the robot to initial position and orientation and null the motors
 
-        p.resetBasePositionAndOrientation(self.car, [self.X[self.i], self.Y[self.i], .3], [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(self.car, [self.X[0], self.Y[0], .3], [0, 0, 1, 1])
         '''
-        self.i += 1
-        if self.i > 2:
-            self.i = 0
+        self.index += 1
+        if self.index > 2:
+            self.index = 0
         '''
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
