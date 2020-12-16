@@ -60,7 +60,7 @@ class f10RaceCarEnv():
         p.resetBasePositionAndOrientation(terrain,[0,0,0],[0,0,0,1])
 
         #self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
-        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [self.X[0], self.Y[0], .3],[0,0,2,1])
+        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [self.X[0], self.Y[0], .3],[0,0,1,1])
 
         # Input and output dimensions defined in the environment
         for wheel in range(p.getNumJoints(self.car)):
@@ -139,7 +139,7 @@ class f10RaceCarEnv():
         self.rayIds = []
         self.rayHitColor = [1, 0, 0]
         self.rayMissColor = [0, 1, 0]
-        self.rayLen = 8
+        self.rayLen = 6
         self.rayStartLen = 0.25
         for i in range(self.numRays):
 
@@ -242,12 +242,52 @@ class f10RaceCarEnv():
         self.first = 1
         # Reset the robot to initial position and orientation and null the motors
 
-        #if self.reset_index < self.amount:
 
 
+        if self.reset_index < self.amount:
+            if (self.X[self.reset_index + 1] - self.X[self.reset_index]) < 0 and ((self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > -2):
+                angle = 100
+            elif (self.X[self.reset_index + 1] - self.X[self.reset_index]) > 0 and ((self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > -2):
+                angle = 0
+            elif (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 0 and ((self.X[self.reset_index + 1] - self.X[self.reset_index]) < 2 and (self.X[self.reset_index + 1] - self.X[self.reset_index]) > -2):
+                angle = -1
+            elif (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > 0 and ((self.X[self.reset_index + 1] - self.X[self.reset_index]) < 2 and (self.X[self.reset_index + 1] - self.X[self.reset_index]) > -2):
+                angle = 1
+            elif (self.X[self.reset_index+1]-self.X[self.reset_index])>0 and (self.Y[self.reset_index+1]-self.Y[self.reset_index])>0:
+                angle = 0.5
+            elif (self.X[self.reset_index+1]-self.X[self.reset_index])>0 and (self.Y[self.reset_index+1]-self.Y[self.reset_index])<0:
+                angle = -0.5
+            elif (self.X[self.reset_index + 1] - self.X[self.reset_index]) < 0 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 0:
+                angle = -2
+            elif (self.X[self.reset_index + 1] - self.X[self.reset_index]) < 0 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > 0:
+                angle = 2
 
-        p.resetBasePositionAndOrientation(self.car, [self.X[self.reset_index], self.Y[self.reset_index], .3], [0, 0, 0.5, 1])
+            else:
+                angle= 1
+        else:
+            if (self.X[0] - self.X[self.reset_index]) < 0 and ((self.Y[0] - self.Y[self.reset_index]) < 2 and (self.Y[0] - self.Y[self.reset_index]) > -2):
+                angle = 100
+            elif (self.X[0] - self.X[self.reset_index]) > 0 and ((self.Y[0] - self.Y[self.reset_index]) < 2 and (self.Y[0] - self.Y[self.reset_index]) > -2):
+                angle = 0
+            elif (self.Y[0] - self.Y[self.reset_index]) < 0 and ((self.X[0] - self.X[self.reset_index]) < 2 and (self.X[0] - self.X[self.reset_index]) > -2):
+                angle = -1
+            elif (self.Y[0] - self.Y[self.reset_index]) > 0 and ((self.X[0] - self.X[self.reset_index]) < 2 and (self.X[0] - self.X[self.reset_index]) > -2):
+                angle = 1
+            elif (self.X[0]-self.X[self.reset_index])>0 and (self.Y[0]-self.Y[self.reset_index])>0:
+                angle = 0.5
+            elif (self.X[0]-self.X[self.reset_index])>0 and (self.Y[0]-self.Y[self.reset_index])<0:
+                angle = -0.5
+            elif (self.X[0] - self.X[self.reset_index]) < 0 and (self.Y[0] - self.Y[self.reset_index]) < 0:
+                angle = -2
+            elif (self.X[0] - self.X[self.reset_index]) < 0 and (self.Y[0] - self.Y[self.reset_index]) > 0:
+                angle = 2
 
+            else:
+                angle= 1
+
+
+        p.resetBasePositionAndOrientation(self.car, [self.X[self.reset_index], self.Y[self.reset_index], .3], [0, 0, angle, 1])
+        #print(angle)
         self.reset_index += 1
         if self.reset_index == self.amount:
             self.reset_index = 0
@@ -264,7 +304,7 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step(0,25)
+        obs, _, _ = self.step(0,20)
         return obs
 
 

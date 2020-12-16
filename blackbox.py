@@ -46,7 +46,7 @@ def f_wrapper(env, policy):
             # Get action from policy
             act,vel = policy.forward(obs)
             # Step environment
-            vel = 25 + vel*1.5
+            vel = 20 + vel*1.5
             obs, rew, done = env.step(act, vel)
             reward += rew
         return reward
