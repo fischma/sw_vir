@@ -2,6 +2,7 @@ import pybullet as p
 import time
 import math
 import numpy as np
+from Semestralka.track import getdataset
 
 class f10RaceCarEnv():
     def __init__(self, animate=False, max_steps=1000):
@@ -24,6 +25,7 @@ class f10RaceCarEnv():
         self.obs_dim = 12
         self.act_dim = 2
 
+
         env_width = 100
         env_height = 100
         self.X=[]
@@ -31,20 +33,69 @@ class f10RaceCarEnv():
         self.index = 0
         self.amount = 0
         self.reset_index = 0
-        heightfieldData = np.zeros(env_width * env_height)
+        heightfieldData = [0]*(env_height*env_width)
+        datasetx, datasety, x1,y1,cx,cy = getdataset()
+        datasetx = np.int64(datasetx)
+        datasety = np.int64(datasety)
+        x1 = np.int64(x1)
+        y1 = np.int64(y1)
+
+        first = True
+        for i in range(len(datasetx)):
+            x = (datasetx[i])
+            y = (datasety[i])
+            xnew = x1[i]
+            ynew = y1[i]
+
+            if not first and xold == x and yold == y:
+                continue
+            else:
+                heightfieldData.pop(env_height * x + y)
+                heightfieldData.insert(env_height * x + y,1)
+                heightfieldData.pop(env_height * xnew + ynew)
+                heightfieldData.insert(env_height * xnew + ynew, 1)
+
+                xold = x
+                yold = y
+                first = False
+
+
+        self.X = cy
+        self.Y = cx
+        self.amount = len(cx)
+
+        '''
         for alpha in range(360):
             i = round(19*math.cos(alpha)-50)
             j = round(19*math.sin(alpha)-72)
+           # i= math.floor(25*(math.sin(alpha)+math.sin(3*alpha)/3+math.sin(5*alpha)/5)+35)
+            #j= math.floor(25*(math.cos(alpha)+math.cos(3*alpha)/3+math.cos(5*alpha)/5)+50)
             heightfieldData[env_height*i+j] = 1
+            #i = math.ceil(25 * (math.sin(alpha) + math.sin(3 * alpha) / 3 + math.sin(5 * alpha) / 5) + 35)
+            #j = math.ceil(25 * (math.cos(alpha) + math.cos(3 * alpha) / 3 + math.cos(5 * alpha) / 5) + 50)
+            #heightfieldData[env_height * i + j] = 1
             i = round(25 * math.cos(alpha) - 50)
             j = round(25 * math.sin(alpha) - 72)
+            #i = math.floor(15 * (math.sin(alpha) + math.sin(3 * alpha) / 3 + math.sin(5 * alpha) / 5) + 35)
+            #j = math.floor(20 * (math.cos(alpha) + math.cos(3 * alpha) / 3 + math.cos(5 * alpha) / 5) + 50)
             heightfieldData[env_height * i + j] = 1
+            #i = math.ceil(15 * (math.sin(alpha) + math.sin(3 * alpha) / 3 + math.sin(5 * alpha) / 5) + 35)
+            #j = math.ceil(20 * (math.cos(alpha) + math.cos(3 * alpha) / 3 + math.cos(5 * alpha) / 5) + 50)
+            #heightfieldData[env_height * i + j] = 1
         for beta in range(1080):
-            i = (23 * math.cos(beta/3) - 50)
-            j = (23 * math.sin(beta/3) - 72)
-            self.X.append(i-(23 * math.cos(0) - 50))
-            self.Y.append(j-(23 * math.sin(0) - 72))
+            #i = 20 * (math.sin(beta) + math.sin(3 * beta) / 3 + math.sin(5 * beta) / 5) + 35
+            #j = 22.5 * (math.cos(beta) + math.cos(3 * beta) / 3 + math.cos(5 * beta) / 5) + 50
+            #self.X.append(i-(20 * (math.sin(0) + math.sin(3 * 0) / 3 + math.sin(5 * 0) / 5) + 35))
+            #self.Y.append(j-(22.5 * (math.cos(0) + math.cos(3 * 0) / 3 + math.cos(5 * 0) / 5) + 50))
+            i = (22 * math.cos(beta/3) - 50)
+            j = (22 * math.sin(beta/3) - 72)
+            self.X.append(i-(22 * math.cos(0) - 50))
+            self.Y.append(j-(22 * math.sin(0) - 72))
             self.amount += 1
+        '''
+
+
+
 
         terrainShape = p.createCollisionShape(shapeType=p.GEOM_HEIGHTFIELD,
                                               meshScale=[1, 1,
@@ -57,10 +108,42 @@ class f10RaceCarEnv():
 
         mass = 0
         terrain = p.createMultiBody(mass,terrainShape)
-        p.resetBasePositionAndOrientation(terrain,[0,0,0],[0,0,0,1])
+        p.resetBasePositionAndOrientation(terrain,[49.5,49.5,0],[0,0,0,1])
 
         #self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
-        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [self.X[0], self.Y[0], .3],[0,0,1,1])
+        if (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and (
+                (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (
+                self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
+            angle = 100
+        elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) > 0 and (
+                (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (
+                self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
+            angle = 0
+        elif (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 0 and (
+                (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 2 and (
+                self.X[self.reset_index + 5] - self.X[self.reset_index]) > -2):
+            angle = -1
+        elif (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > 0 and (
+                (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 2 and (
+                self.X[self.reset_index + 5] - self.X[self.reset_index]) > -2):
+            angle = 1
+        elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) > 0 and (
+                self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > 0:
+            angle = 0.5
+        elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) > 0 and (
+                self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 0:
+            angle = -0.5
+        elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and (
+                self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 0:
+            angle = -2
+        elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and (
+                self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > 0:
+            angle = 2
+
+        else:
+            angle = 1
+        self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [self.X[0], self.Y[0], .3],[0,0,angle,1])
+        p.resetDebugVisualizerCamera(cameraDistance=50,cameraYaw=0,cameraPitch=270,cameraTargetPosition=[49.5,49.5,0])
 
         # Input and output dimensions defined in the environment
         for wheel in range(p.getNumJoints(self.car)):
@@ -139,7 +222,7 @@ class f10RaceCarEnv():
         self.rayIds = []
         self.rayHitColor = [1, 0, 0]
         self.rayMissColor = [0, 1, 0]
-        self.rayLen = 6
+        self.rayLen = 8
         self.rayStartLen = 0.25
         for i in range(self.numRays):
 
@@ -206,17 +289,17 @@ class f10RaceCarEnv():
         #todo: write better reward function
 
         if self.index < self.amount:
-            velocityRew = ((self.X[self.index + 1]-self.X[self.index])*(self.X[self.index+ 1]-self.X[self.index]) + (self.Y[self.index + 1]-self.Y[self.index])*(self.Y[self.index + 1]-self.Y[self.index ])) - ((self.X[self.index + 1]-x)*(self.X[self.index + 1]-x) + (self.Y[self.index + 1]-y)*(self.Y[self.index + 1]-y))
-            if ((self.X[self.index + 1] - x) * (self.X[self.index + 1] - x) + (self.Y[self.index + 1] - y) * (self.Y[self.index + 1] - y)) < 0.1:
+            velocityRew = ((self.X[self.index + 5]-self.X[self.index])**2+ (self.Y[self.index + 5]-self.Y[self.index])**2) - ((self.X[self.index + 5]-x)**2 + (self.Y[self.index + 5]-y)**2)
+            if ((self.X[self.index + 5] - x) **2 + (self.Y[self.index + 5] - y) **2) < 0.1:
                 if self.index < self.amount:
-                    self.index += 1
+                    self.index += 5
                 else:
                     self.index = 0
         else:
-            velocityRew = ((self.X[0] - self.X[self.index])*(self.X[0] - self.X[self.index]) + (self.Y[0] - self.Y[self.index])*(self.Y[0] - self.Y[self.index]))-((self.X[0] -x)*(self.X[0] -x) + (self.Y[0] - y)*(self.Y[0] - y))
-            if ((self.X[0] - x) * (self.X[0] - x) + (self.Y[0] - y) * (self.Y[0] - y)) < 0.1:
+            velocityRew = ((self.X[0] - self.X[self.index])**2 + (self.Y[0] - self.Y[self.index])**2)-((self.X[0] -x)**2 + (self.Y[0] - y)**2)
+            if ((self.X[0] - x) **2 + (self.Y[0] - y) **2) < 0.1:
                 if self.index < self.amount:
-                    self.index += 1
+                    self.index += 5
                 else:
                     self.index = 0
         #velocityRew = x+y
@@ -245,21 +328,21 @@ class f10RaceCarEnv():
 
 
         if self.reset_index < self.amount:
-            if (self.X[self.reset_index + 1] - self.X[self.reset_index]) < 0 and ((self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > -2):
+            if (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and ((self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
                 angle = 100
-            elif (self.X[self.reset_index + 1] - self.X[self.reset_index]) > 0 and ((self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > -2):
+            elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) > 0 and ((self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
                 angle = 0
-            elif (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 0 and ((self.X[self.reset_index + 1] - self.X[self.reset_index]) < 2 and (self.X[self.reset_index + 1] - self.X[self.reset_index]) > -2):
+            elif (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 0 and ((self.X[self.reset_index + 5] - self.X[self.reset_index]) < 2 and (self.X[self.reset_index + 5] - self.X[self.reset_index]) > -2):
                 angle = -1
-            elif (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > 0 and ((self.X[self.reset_index + 1] - self.X[self.reset_index]) < 2 and (self.X[self.reset_index + 1] - self.X[self.reset_index]) > -2):
+            elif (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > 0 and ((self.X[self.reset_index + 5] - self.X[self.reset_index]) < 2 and (self.X[self.reset_index + 5] - self.X[self.reset_index]) > -2):
                 angle = 1
-            elif (self.X[self.reset_index+1]-self.X[self.reset_index])>0 and (self.Y[self.reset_index+1]-self.Y[self.reset_index])>0:
+            elif (self.X[self.reset_index+5]-self.X[self.reset_index])>0 and (self.Y[self.reset_index+5]-self.Y[self.reset_index])>0:
                 angle = 0.5
-            elif (self.X[self.reset_index+1]-self.X[self.reset_index])>0 and (self.Y[self.reset_index+1]-self.Y[self.reset_index])<0:
+            elif (self.X[self.reset_index+5]-self.X[self.reset_index])>0 and (self.Y[self.reset_index+5]-self.Y[self.reset_index])<0:
                 angle = -0.5
-            elif (self.X[self.reset_index + 1] - self.X[self.reset_index]) < 0 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) < 0:
+            elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 0:
                 angle = -2
-            elif (self.X[self.reset_index + 1] - self.X[self.reset_index]) < 0 and (self.Y[self.reset_index + 1] - self.Y[self.reset_index]) > 0:
+            elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > 0:
                 angle = 2
 
             else:
@@ -288,8 +371,10 @@ class f10RaceCarEnv():
 
         p.resetBasePositionAndOrientation(self.car, [self.X[self.reset_index], self.Y[self.reset_index], .3], [0, 0, angle, 1])
         #print(angle)
-        self.reset_index += 1
-        if self.reset_index == self.amount:
+
+        self.reset_index += 5
+
+        if self.reset_index >= self.amount:
             self.reset_index = 0
 
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
@@ -304,7 +389,7 @@ class f10RaceCarEnv():
         if self.animate: time.sleep(0.04)
 
         # Return initial obs
-        obs, _, _ = self.step(0,20)
+        obs, _, _ = self.step(0,10)
         return obs
 
 
@@ -319,6 +404,7 @@ class f10RaceCarEnv():
                     a = 0.5
                 self.step(-a,10)
             self.reset()
+
 
     def close(self):
         p.disconnect(physicsClientId=self.client_ID)
