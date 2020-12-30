@@ -2,7 +2,7 @@ import pybullet as p
 import time
 import math
 import numpy as np
-from Semestralka.track import getdataset
+from track import getdataset
 
 class f10RaceCarEnv():
     def __init__(self, animate=False, max_steps=1000):
@@ -288,17 +288,17 @@ class f10RaceCarEnv():
         x, y, z = torsoPosition
         #todo: write better reward function
 
-        if self.index < self.amount:
+        if self.index < (self.amount-5):
             velocityRew = ((self.X[self.index + 5]-self.X[self.index])**2+ (self.Y[self.index + 5]-self.Y[self.index])**2) - ((self.X[self.index + 5]-x)**2 + (self.Y[self.index + 5]-y)**2)
             if ((self.X[self.index + 5] - x) **2 + (self.Y[self.index + 5] - y) **2) < 0.1:
-                if self.index < self.amount:
+                if self.index < (self.amount-5):
                     self.index += 5
                 else:
                     self.index = 0
         else:
             velocityRew = ((self.X[0] - self.X[self.index])**2 + (self.Y[0] - self.Y[self.index])**2)-((self.X[0] -x)**2 + (self.Y[0] - y)**2)
             if ((self.X[0] - x) **2 + (self.Y[0] - y) **2) < 0.1:
-                if self.index < self.amount:
+                if self.index < (self.amount-5):
                     self.index += 5
                 else:
                     self.index = 0
@@ -327,7 +327,7 @@ class f10RaceCarEnv():
 
 
 
-        if self.reset_index < self.amount:
+        if self.reset_index < (self.amount-5):
             if (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and ((self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
                 angle = 100
             elif (self.X[self.reset_index + 5] - self.X[self.reset_index]) > 0 and ((self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
