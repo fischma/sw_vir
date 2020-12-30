@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import random
-from Semestralka.f10 import f10RaceCarEnv
+from f102 import f10RaceCarEnv
 
 
 # This script will run correctly assuming you have pythonpath pointing to the src directory. If you open a pycharm project inside the hw_1 file from sources then pythonpath should be set automatically
@@ -46,8 +46,11 @@ def f_wrapper(env, policy):
             # Get action from policy
             act,vel = policy.forward(obs)
             # Step environment
-            vel_final = 10+1.5*vel
-            obs, rew, done = env.step(act, vel_final)
+            #print("bef",vel)
+            vel_cliped = np.clip(vel, 0, 1)
+            vel = vel_cliped*60
+            #print(vel)
+            obs, rew, done = env.step(act, vel_cliped)
             reward += rew
         return reward
 
@@ -94,7 +97,7 @@ if __name__ == "__main__":
     train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
     max_steps = 1000
-    N_training_iters = 50
+    N_training_iters = 3000
     w_best = None
     if train:
         # Make the environment and your policy

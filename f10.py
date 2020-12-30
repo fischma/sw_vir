@@ -25,6 +25,9 @@ class f10RaceCarEnv():
         self.obs_dim = 12
         self.act_dim = 2
 
+        # sum rewards
+        self.lastrew = 0
+
 
         env_width = 100
         env_height = 100
@@ -222,7 +225,7 @@ class f10RaceCarEnv():
         self.rayIds = []
         self.rayHitColor = [1, 0, 0]
         self.rayMissColor = [0, 1, 0]
-        self.rayLen = 8
+        self.rayLen = 6
         self.rayStartLen = 0.25
         for i in range(self.numRays):
 
@@ -257,6 +260,8 @@ class f10RaceCarEnv():
         hitArray =[]
         numThreads = 0
 
+        velocity = velocity * 60
+
         results = p.rayTestBatch(self.rayFrom, self.rayTo, numThreads, parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
         for i in range(self.numRays):
             hitFraction = results[i][2]
@@ -288,28 +293,41 @@ class f10RaceCarEnv():
         x, y, z = torsoPosition
         #todo: write better reward function
 
+        #print("stepcounter", self.stepCtr, "index=", self.index, "x=", x, "y=", y, "amount=", self.amount)
         if self.index < (self.amount-5):
             velocityRew = ((self.X[self.index + 5]-self.X[self.index])**2+ (self.Y[self.index + 5]-self.Y[self.index])**2) - ((self.X[self.index + 5]-x)**2 + (self.Y[self.index + 5]-y)**2)
-            if ((self.X[self.index + 5] - x) **2 + (self.Y[self.index + 5] - y) **2) < 0.1:
+            dist = (self.X[self.index + 5]-self.X[self.index])**2+ (self.Y[self.index + 5]-self.Y[self.index])**2
+            currdist = ((self.X[self.index + 5]-x)**2 + (self.Y[self.index + 5]-y)**2)
+            #normalizace
+            r_pos = self.lastrew + velocityRew / (dist+0.0001)
+            if currdist < 0.7:
+                self.lastrew = r_pos
                 if self.index < (self.amount-5):
                     self.index += 5
                 else:
                     self.index = 0
         else:
             velocityRew = ((self.X[0] - self.X[self.index])**2 + (self.Y[0] - self.Y[self.index])**2)-((self.X[0] -x)**2 + (self.Y[0] - y)**2)
-            if ((self.X[0] - x) **2 + (self.Y[0] - y) **2) < 0.1:
+            dist = ((self.X[0] - self.X[self.index])**2 + (self.Y[0] - self.Y[self.index])**2)
+            currdist = ((self.X[0] -x)**2 + (self.Y[0] - y)**2)
+            #normalizace
+            r_pos = self.lastrew + velocityRew / (dist+0.0001)
+            if currdist < 0.7:
+                self.lastrew = r_pos
                 if self.index < (self.amount-5):
                     self.index += 5
                 else:
                     self.index = 0
         #velocityRew = x+y
         #todo: nomalization of reward
-        r_pos = (velocityRew * 1.0) / self.max_steps * 100
+        #r_pos = (velocityRew * 1.0) / self.max_steps * 100
 
+        #print("velocityrew=", velocityRew, "r_pos=", r_pos, "dist=", dist, "currdist=", currdist)
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
 
-        env_obs = [scaled_joint_angles, velocity]
+        velocity_cliped = np.clip(velocity, 0, 1)
+        env_obs = [scaled_joint_angles, velocity_cliped]
         for i in range(10):
             env_obs.append(hitArray[i])
 
@@ -317,6 +335,8 @@ class f10RaceCarEnv():
 
         # This condition terminates the episode
         done = self.stepCtr > self.max_steps
+
+
         return env_obs, r_pos, done
 
     def reset(self):
@@ -325,7 +345,7 @@ class f10RaceCarEnv():
         self.first = 1
         # Reset the robot to initial position and orientation and null the motors
 
-
+        self.lastrew = 0  # resets rewards
 
         if self.reset_index < (self.amount-5):
             if (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and ((self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
@@ -371,6 +391,8 @@ class f10RaceCarEnv():
 
         p.resetBasePositionAndOrientation(self.car, [self.X[self.reset_index], self.Y[self.reset_index], .3], [0, 0, angle, 1])
         #print(angle)
+
+        self.index = self.reset_index
 
         self.reset_index += 5
 
