@@ -28,14 +28,17 @@ class f10RaceCarEnv():
         # sum rewards
         self.lastrew = 0
 
+        self.ctr = 0
+        self.iteration = 10
 
-        env_width = 100
-        env_height = 100
-        self.X=[]
-        self.Y=[]
+        self.X = []
+        self.Y = []
         self.index = 0
         self.amount = 0
         self.reset_index = 0
+        env_width = 100
+        env_height = 100
+
         heightfieldData = [0]*(env_height*env_width)
         datasetx, datasety, x1,y1,cx,cy = getdataset()
         datasetx = np.int64(datasetx)
@@ -67,35 +70,6 @@ class f10RaceCarEnv():
         self.Y = cx
         self.amount = len(cx)
 
-        '''
-        for alpha in range(360):
-            i = round(19*math.cos(alpha)-50)
-            j = round(19*math.sin(alpha)-72)
-           # i= math.floor(25*(math.sin(alpha)+math.sin(3*alpha)/3+math.sin(5*alpha)/5)+35)
-            #j= math.floor(25*(math.cos(alpha)+math.cos(3*alpha)/3+math.cos(5*alpha)/5)+50)
-            heightfieldData[env_height*i+j] = 1
-            #i = math.ceil(25 * (math.sin(alpha) + math.sin(3 * alpha) / 3 + math.sin(5 * alpha) / 5) + 35)
-            #j = math.ceil(25 * (math.cos(alpha) + math.cos(3 * alpha) / 3 + math.cos(5 * alpha) / 5) + 50)
-            #heightfieldData[env_height * i + j] = 1
-            i = round(25 * math.cos(alpha) - 50)
-            j = round(25 * math.sin(alpha) - 72)
-            #i = math.floor(15 * (math.sin(alpha) + math.sin(3 * alpha) / 3 + math.sin(5 * alpha) / 5) + 35)
-            #j = math.floor(20 * (math.cos(alpha) + math.cos(3 * alpha) / 3 + math.cos(5 * alpha) / 5) + 50)
-            heightfieldData[env_height * i + j] = 1
-            #i = math.ceil(15 * (math.sin(alpha) + math.sin(3 * alpha) / 3 + math.sin(5 * alpha) / 5) + 35)
-            #j = math.ceil(20 * (math.cos(alpha) + math.cos(3 * alpha) / 3 + math.cos(5 * alpha) / 5) + 50)
-            #heightfieldData[env_height * i + j] = 1
-        for beta in range(1080):
-            #i = 20 * (math.sin(beta) + math.sin(3 * beta) / 3 + math.sin(5 * beta) / 5) + 35
-            #j = 22.5 * (math.cos(beta) + math.cos(3 * beta) / 3 + math.cos(5 * beta) / 5) + 50
-            #self.X.append(i-(20 * (math.sin(0) + math.sin(3 * 0) / 3 + math.sin(5 * 0) / 5) + 35))
-            #self.Y.append(j-(22.5 * (math.cos(0) + math.cos(3 * 0) / 3 + math.cos(5 * 0) / 5) + 50))
-            i = (22 * math.cos(beta/3) - 50)
-            j = (22 * math.sin(beta/3) - 72)
-            self.X.append(i-(22 * math.cos(0) - 50))
-            self.Y.append(j-(22 * math.sin(0) - 72))
-            self.amount += 1
-        '''
 
 
 
@@ -338,9 +312,60 @@ class f10RaceCarEnv():
 
 
         return env_obs, r_pos, done
+    def generate_track(self):
+        env_width = 100
+        env_height = 100
+
+        heightfieldData = [0] * (env_height * env_width)
+        datasetx, datasety, x1, y1, cx, cy = getdataset()
+        datasetx = np.int64(datasetx)
+        datasety = np.int64(datasety)
+        x1 = np.int64(x1)
+        y1 = np.int64(y1)
+
+        first = True
+        for i in range(len(datasetx)):
+            x = (datasetx[i])
+            y = (datasety[i])
+            xnew = x1[i]
+            ynew = y1[i]
+
+            if not first and xold == x and yold == y:
+                continue
+            else:
+                heightfieldData.pop(env_height * x + y)
+                heightfieldData.insert(env_height * x + y, 1)
+                heightfieldData.pop(env_height * xnew + ynew)
+                heightfieldData.insert(env_height * xnew + ynew, 1)
+
+                xold = x
+                yold = y
+                first = False
+
+        self.X = cy
+        self.Y = cx
+        self.amount = len(cx)
+
+        terrainShape = p.createCollisionShape(shapeType=p.GEOM_HEIGHTFIELD,
+                                              meshScale=[1, 1,
+                                                         1],
+                                              heightfieldTextureScaling=(env_width - 1) / 2,
+                                              heightfieldData=heightfieldData,
+                                              numHeightfieldRows=env_height,
+                                              numHeightfieldColumns=env_width,
+                                              physicsClientId=self.client_ID)
+
+        mass = 0
+        terrain = p.createMultiBody(mass, terrainShape)
+        p.resetBasePositionAndOrientation(terrain, [49.5, 49.5, 0], [0, 0, 0, 1])
 
     def reset(self):
         self.stepCtr = 0  # Counts the amount of steps done in the current episode
+
+        self.ctr += 1
+
+        if not self.animate and self.ctr % self.iteration == 0:
+            self.generate_track()
 
         self.first = 1
         # Reset the robot to initial position and orientation and null the motors
