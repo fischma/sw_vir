@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import random
-from f10 import f10RaceCarEnv
+from f102 import f10RaceCarEnv
 
 
 # This script will run correctly assuming you have pythonpath pointing to the src directory. If you open a pycharm project inside the hw_1 file from sources then pythonpath should be set automatically
@@ -64,7 +64,7 @@ def my_opt(f, w_init, iters):
     r_best = 0
     for i in range(iters):
         w = np.copy(w_best)
-        for j in range(26):
+        for j in range(28):
             w[j] = w_best[j] + random.gauss(0, 0.05)
         curr_rew = f(w)
         if curr_rew > r_best:
@@ -94,10 +94,10 @@ def test(w_best, max_steps=70, animate=False):
 
 if __name__ == "__main__":
     train = True
-    #train = False
+    train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
-    max_steps = 1000
-    N_training_iters =1000
+    max_steps = 10000
+    N_training_iters = 500
     w_best = None
     if train:
         # Make the environment and your policy

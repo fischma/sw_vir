@@ -22,7 +22,7 @@ class f10RaceCarEnv():
         #p.setRealTimeSimulation(0)
 
         # Input and output dimensions defined in the environment
-        self.obs_dim = 12
+        self.obs_dim = 13
         self.act_dim = 2
 
         # sum rewards
@@ -259,12 +259,63 @@ class f10RaceCarEnv():
         p.setJointMotorControl2(self.car, self.steering[0], p.POSITION_CONTROL, targetPosition=angles)
         p.setJointMotorControl2(self.car, self.steering[1], p.POSITION_CONTROL, targetPosition=angles)
 
+
         # Step the simulation.
         p.stepSimulation()
         if self.animate: time.sleep(0.004)
 
         torsoPosition, newAngle = self.getObs()
         x, y, z = torsoPosition
+
+
+        # Feature (snad vylepseni)
+        if self.index < self.amount - 5:
+            x1 = self.X[self.index + 2]
+            y1 = self.Y[self.index + 2]
+            x2 = self.X[self.index + 4]
+            y2 = self.Y[self.index + 4]
+        else:
+            x1 = self.X[0]
+            y1 = self.Y[0]
+            x2 = self.X[2]
+            y2 = self.Y[2]
+
+        deltax1 = x1 - x
+        deltay1 = y1 - y
+        deltax2 = x2 - x
+        deltay2 = y2 - y
+
+        if deltax1 != 0:
+            a1 = deltay1/deltax1
+        else:
+            print("x1=0", deltay1)
+            if deltay1 > 0:
+                a1 = 100
+            else:
+                a1 = -100
+
+        if deltax1 != 0:
+            a2 = deltay2/deltax2
+        else:
+            print("x2=0", deltay2)
+            if deltay2 > 0:
+                a2 = 100
+            else:
+                a2 = -100
+
+
+        #print("x=", x, "y", y, "deltax1=",deltax1, "deltay1=",deltay1, "deltax2=",deltax2, "deltay2=",deltay2, "a1=", a1, "a2=", a2, "a1-a2", a1-a2)
+
+        #print("x=", x, "y", y, "a1=", a1, "a2=", a2, "a1-a2", a1 - a2)
+
+        deltaa = a1-a2
+        a = np.clip(deltaa, -10, 10)
+        a = a/10
+
+
+
+
+
         #todo: write better reward function
 
         #print("stepcounter", self.stepCtr, "index=", self.index, "x=", x, "y=", y, "amount=", self.amount)
@@ -301,7 +352,7 @@ class f10RaceCarEnv():
         scaled_joint_angles = self.rads_to_norm(newAngle)
 
         velocity_cliped = np.clip(velocity, 0, 1)
-        env_obs = [scaled_joint_angles, velocity_cliped]
+        env_obs = [scaled_joint_angles, velocity_cliped, a]
         for i in range(10):
             env_obs.append(hitArray[i])
 
@@ -364,7 +415,7 @@ class f10RaceCarEnv():
 
         self.ctr += 1
 
-        if not self.animate and self.ctr % self.iteration == 0:
+        if not self.animate and self.ctr % self.iteration == 0:     #generates new track
             self.generate_track()
             self.reset_index = 0
             self.index = 0
@@ -395,7 +446,6 @@ class f10RaceCarEnv():
             else:
                 angle= 1
         else:
-            print(self.amount, self.reset_index, self.index)
             if (self.X[0] - self.X[self.reset_index]) < 0 and ((self.Y[0] - self.Y[self.reset_index]) < 2 and (self.Y[0] - self.Y[self.reset_index]) > -2):
                 angle = 100
             elif (self.X[0] - self.X[self.reset_index]) > 0 and ((self.Y[0] - self.Y[self.reset_index]) < 2 and (self.Y[0] - self.Y[self.reset_index]) > -2):
@@ -424,7 +474,7 @@ class f10RaceCarEnv():
 
         self.reset_index += 5
 
-        if self.reset_index >= self.amount:
+        if self.reset_index >= (self.amount):
             self.reset_index = 0
 
         p.setJointMotorControl2(self.car, self.wheels[0], p.VELOCITY_CONTROL, targetVelocity=0, force=0)
