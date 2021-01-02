@@ -226,7 +226,7 @@ class f10RaceCarEnv():
         hitArray =[]
         numThreads = 0
 
-        velocity = velocity * 60
+        velocity = velocity * 100
 
         results = p.rayTestBatch(self.rayFrom, self.rayTo, numThreads, parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
         for i in range(self.numRays):
@@ -303,8 +303,12 @@ class f10RaceCarEnv():
             env_obs.append(hitArray[i])
 
         for i in range(1,11,2):
-            env_obs.append(self.X[self.index+i] - x)
-            env_obs.append(self.Y[self.index+i] - y)
+            if self.index+i < self.amount:
+                env_obs.append(self.X[self.index+i] - x)
+                env_obs.append(self.Y[self.index+i] - y)
+            else:
+                env_obs.append(self.X[self.index + i - self.amount + 1] - x)
+                env_obs.append(self.Y[self.index + i - self.amount + 1] - y)
 
         self.stepCtr += 1
 
