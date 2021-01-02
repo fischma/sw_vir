@@ -218,8 +218,10 @@ class f10RaceCarEnv():
         torso_pos, torso_quat = p.getBasePositionAndOrientation(self.car)
         obs = p.getJointStates(self.car, range(19))
         joint_angles=obs[0][0]
+        car_orient = p.getEulerFromQuaternion(torso_quat)
+        #print(car_orient)
 
-        return torso_pos, joint_angles
+        return torso_pos, joint_angles, car_orient
 
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
@@ -256,8 +258,11 @@ class f10RaceCarEnv():
         p.stepSimulation()
         if self.animate: time.sleep(0.004)
 
-        torsoPosition, newAngle = self.getObs()
+        torsoPosition, newAngle, carAngle = self.getObs()
         x, y, z = torsoPosition
+        carAngle = carAngle[2]
+        RotMatrix = np.array([[math.cos(carAngle), -math.sin(carAngle)], [math.sin(carAngle), math.cos(carAngle)]])
+        #print(RotMatrix)
 
 
         # Feature (snad vylepseni)
@@ -304,11 +309,20 @@ class f10RaceCarEnv():
 
         for i in range(1,11,2):
             if self.index+i < self.amount:
-                env_obs.append(self.X[self.index+i] - x)
-                env_obs.append(self.Y[self.index+i] - y)
+                vect=np.array([self.X[self.index+i] - x,self.Y[self.index+i] - y])
             else:
-                env_obs.append(self.X[self.index + i - self.amount + 1] - x)
-                env_obs.append(self.Y[self.index + i - self.amount + 1] - y)
+                vect = np.array([self.X[self.index + i - self.amount + 1] - x, self.Y[self.index + i - self.amount + 1] - y])
+
+            #vect = vect.transpose()
+            newvect = vect @ RotMatrix
+            env_obs.append(newvect[0])
+            env_obs.append(newvect[1])
+            vect_pos = np.array([1,1])
+            #NewRotMatrix = np.array([[math.cos(math.pi/4), -math.sin(math.pi/4)], [math.sin(math.pi/4), math.cos(math.pi/4)]])
+            #print(NewRotMatrix)
+            #new_vect_pos =  vect_pos @ NewRotMatrix
+            #print("pos",vect_pos,new_vect_pos)
+            #print(i, vect, newvect)
 
         self.stepCtr += 1
 
@@ -370,9 +384,12 @@ class f10RaceCarEnv():
         self.ctr += 1
 
         if not self.animate and self.ctr % self.iteration == 0:     #generates new track
-            self.generate_track()
-            self.reset_index = 0
-            self.index = 0
+            try:
+                self.generate_track()
+                self.reset_index = 0
+                self.index = 0
+            except:
+                print("fail")
 
         self.first = 1
         # Reset the robot to initial position and orientation and null the motors
