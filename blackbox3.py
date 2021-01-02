@@ -93,11 +93,11 @@ def test(w_best, max_steps=70, animate=False):
 
 
 if __name__ == "__main__":
-    #train = True
-    train = False
-    policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
+    train = True
+    #train = False
+    policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx33short100.npy')
     max_steps = 1000
-    N_training_iters = 2000
+    N_training_iters = 100
     w_best = None
     if train:
         # Make the environment and your policy

@@ -3,11 +3,23 @@ import time
 import math
 import numpy as np
 from track import getdataset
+import os
 
 class f10RaceCarEnv():
     def __init__(self, animate=False, max_steps=1000):
         self.animate = animate
         self.max_steps = max_steps
+
+        self.trackindex = 1
+        checkpointyx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsx0.npy')
+        checkpointyy = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsy0.npy')
+        vnitrekx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'inx0.npy')
+        vnejsekx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'outx0.npy')
+        vnitreky = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'iny0.npy')
+        vnejseky = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'outy0.npy')
+
+
+
 
         # Initialize simulation
         if (animate):
@@ -29,7 +41,7 @@ class f10RaceCarEnv():
         self.lastrew = 0
 
         self.ctr = 0
-        self.iteration = 100
+        self.iteration = 20
 
         self.X = []
         self.Y = []
@@ -40,11 +52,18 @@ class f10RaceCarEnv():
         env_height = 100
 
         heightfieldData = [0]*(env_height*env_width)
-        datasetx, datasety, x1,y1,cx,cy = getdataset()
+        '''datasetx, datasety, x1,y1,cx,cy = getdataset()
         datasetx = np.int64(datasetx)
         datasety = np.int64(datasety)
         x1 = np.int64(x1)
-        y1 = np.int64(y1)
+        y1 = np.int64(y1)'''
+
+        datasetx = np.load(vnejsekx)
+        datasety = np.load(vnejseky)
+        x1 = np.load(vnitrekx)
+        y1 = np.load(vnitreky)
+        cx = np.load(checkpointyx)
+        cy = np.load(checkpointyy)
 
         first = True
         for i in range(len(datasetx)):
@@ -191,7 +210,7 @@ class f10RaceCarEnv():
         self.rayIds = []
         self.rayHitColor = [1, 0, 0]
         self.rayMissColor = [0, 1, 0]
-        self.rayLen = 6
+        self.rayLen = 7
         self.rayStartLen = 0.25
         for i in range(self.numRays):
 
@@ -336,11 +355,29 @@ class f10RaceCarEnv():
         env_height = 100
 
         heightfieldData = [0] * (env_height * env_width)
-        datasetx, datasety, x1, y1, cx, cy = getdataset()
+        '''datasetx, datasety, x1, y1, cx, cy = getdataset()
         datasetx = np.int64(datasetx)
         datasety = np.int64(datasety)
         x1 = np.int64(x1)
-        y1 = np.int64(y1)
+        y1 = np.int64(y1)'''
+
+        checkpointyx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsx'+str(self.trackindex)+'.npy')
+        checkpointyy = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsy'+str(self.trackindex)+'.npy')
+        vnitrekx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'inx'+str(self.trackindex)+'.npy')
+        vnejsekx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'outx'+str(self.trackindex)+'.npy')
+        vnitreky = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'iny'+str(self.trackindex)+'.npy')
+        vnejseky = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'outy'+str(self.trackindex)+'.npy')
+
+        datasetx = np.load(vnejsekx)
+        datasety = np.load(vnejseky)
+        x1 = np.load(vnitrekx)
+        y1 = np.load(vnitreky)
+        cx = np.load(checkpointyx)
+        cy = np.load(checkpointyy)
+
+        self.trackindex += 1
+        if self.trackindex==5:
+            self.trackindex = 0
 
         first = True
         for i in range(len(datasetx)):
