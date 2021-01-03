@@ -48,7 +48,7 @@ def f_wrapper(env, policy):
             # Step environment
             #print("bef",vel)
             vel_cliped = np.clip(vel, 0, 1)
-            vel = vel_cliped*60
+            vel = vel_cliped*100
             #print(vel)
             obs, rew, done = env.step(act, vel_cliped)
             reward += rew
@@ -95,8 +95,8 @@ def test(w_best, max_steps=70, animate=False):
 if __name__ == "__main__":
     train = True
     train = False
-    policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx.npy')
-    max_steps = 10000
+    policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx20shortgood.npy.npy')
+    max_steps = 1000
     N_training_iters = 500
     w_best = None
     if train:
