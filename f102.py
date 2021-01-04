@@ -10,7 +10,9 @@ class f10RaceCarEnv():
         self.animate = animate
         self.max_steps = max_steps
 
-        self.trackindex = 1
+        self.trackindex = 1         #selects which map will ba used
+
+        #initialize points for the first track
         checkpointyx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsx0.npy')
         checkpointyy = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsy0.npy')
         vnitrekx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'inx0.npy')
@@ -30,18 +32,20 @@ class f10RaceCarEnv():
         # Set simulation world params
         p.setGravity(0, 0, -9.8)
         p.setTimeStep(1. / 120.)
-        #p.setRealTimeSimulation(0)
 
         # Input and output dimensions defined in the environment
         self.obs_dim = 13
         self.act_dim = 2
 
-        # sum rewards
+        # sum of rewards
         self.lastrew = 0
 
         self.ctr = 0
+
+        #number of epochs on one track (then new track is generated)
         self.iteration = 100
 
+        #Generating track
         self.X = []
         self.Y = []
         self.index = 0
@@ -51,6 +55,8 @@ class f10RaceCarEnv():
         env_height = 100
 
         heightfieldData = [0]*(env_height*env_width)
+
+        #this would be used if random tracks were generated (now we use predefined tracks)
         '''datasetx, datasety, x1,y1,cx,cy = getdataset()
         datasetx = np.int64(datasetx)
         datasety = np.int64(datasety)
@@ -105,7 +111,7 @@ class f10RaceCarEnv():
         terrain = p.createMultiBody(mass,terrainShape)
         p.resetBasePositionAndOrientation(terrain,[49.5,49.5,0],[0,0,0,1])
 
-        #self.track = p.loadSDF("f10_racecar/meshes/barca_track.sdf", globalScaling=1)
+        #making an angle in which the car is generated
         if (self.X[self.reset_index + 5] - self.X[self.reset_index]) < 0 and (
                 (self.Y[self.reset_index + 5] - self.Y[self.reset_index]) < 2 and (
                 self.Y[self.reset_index + 5] - self.Y[self.reset_index]) > -2):
@@ -140,7 +146,6 @@ class f10RaceCarEnv():
         self.car = p.loadURDF("f10_racecar/racecar_differential.urdf", [self.X[0], self.Y[0], .3],[0,0,angle,1])
         p.resetDebugVisualizerCamera(cameraDistance=50,cameraYaw=0,cameraPitch=270,cameraTargetPosition=[49.5,49.5,0])
 
-        # Input and output dimensions defined in the environment
         for wheel in range(p.getNumJoints(self.car)):
             p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
             p.changeDynamics(self.car,wheel,mass = 1,lateralFriction= 1.0)
@@ -195,20 +200,9 @@ class f10RaceCarEnv():
         self.joints_rads_high = 4.71
         self.joints_rads_diff = self.joints_rads_high - self.joints_rads_low
 
-        #self.Velocity = 1
-
         self.stepCtr = 0
         self.hokuyo_joint = 4
 
-
-
-        '''
-        #self.X = [0, 11.493200419744126, 24.96498657017559, 24.87307188808468, 35.60757474635269, 33.53535176554145,
-                  17.869495573984853, 2.1742063003894714, -13.469216230700594, -24.784372900250176, -18.17340639021027]
-        #self.Y = [0, 5.5038210072150795, -2.6576378118176285, 3.3267677733854453, 2.340371546376694,
-                  -10.525819436039331, -10.692318564741319, -10.65286557827287, -10.613216511929613,
-                  -2.4196071085931297, 8.06798264769463]
-        '''
         # nastaveni paprsku
         self.replaceLines = True
         self.numRays = 10
@@ -233,27 +227,31 @@ class f10RaceCarEnv():
                 self.rayIds.append(-1)
 
 
+    #converts angles from radian to norm
     def rads_to_norm(self, joints):
         sjoints = ((joints - self.joints_rads_low) / self.joints_rads_diff) * 2 - 1
         return sjoints
 
+    #converts angles from norm to radians
     def norm_to_rads(self, action):
         return (action * 0.5 + 0.5) * self.joints_rads_diff + self.joints_rads_low
 
+    #Returns position and rotation of the car
     def getObs(self):
         torso_pos, torso_quat = p.getBasePositionAndOrientation(self.car)
         obs = p.getJointStates(self.car, range(19))
         joint_angles=obs[0][0]
-
         return torso_pos, joint_angles
 
+    #Makes step in the enviroment
     def step(self, steeringAngle, velocity):
         angles = self.norm_to_rads(steeringAngle)
         hitArray =[]
         numThreads = 0
 
-        velocity = velocity * 100
+        velocity = velocity * 100           #converts velocity from normalized version
 
+        #creates rays
         results = p.rayTestBatch(self.rayFrom, self.rayTo, numThreads, parentObjectUniqueId=self.car, parentLinkIndex=self.hokuyo_joint)
         for i in range(self.numRays):
             hitFraction = results[i][2]
@@ -286,7 +284,9 @@ class f10RaceCarEnv():
         x, y, z = torsoPosition
 
 
-        # Feature (snad vylepseni)
+        # Feature (vylepseni pomoci uhlu)
+
+        #gets data from waitpoints
         if self.index < self.amount - 5:
             x1 = self.X[self.index + 2]
             y1 = self.Y[self.index + 2]
@@ -298,6 +298,7 @@ class f10RaceCarEnv():
             x2 = self.X[2]
             y2 = self.Y[2]
 
+        #counts tangens of the angles
         deltax1 = x1 - x
         deltay1 = y1 - y
         deltax2 = x2 - x
@@ -306,37 +307,25 @@ class f10RaceCarEnv():
         if deltax1 != 0:
             a1 = deltay1/deltax1
         else:
-            print("x1=0", deltay1)
             if deltay1 > 0:
-                a1 = 100
+                a1 = 100000
             else:
-                a1 = -100
+                a1 = -100000
 
         if deltax1 != 0:
             a2 = deltay2/deltax2
         else:
-            print("x2=0", deltay2)
             if deltay2 > 0:
-                a2 = 100
+                a2 = 100000
             else:
-                a2 = -100
-
-
-        #print("x=", x, "y", y, "deltax1=",deltax1, "deltay1=",deltay1, "deltax2=",deltax2, "deltay2=",deltay2, "a1=", a1, "a2=", a2, "a1-a2", a1-a2)
-
-        #print("x=", x, "y", y, "a1=", a1, "a2=", a2, "a1-a2", a1 - a2)
+                a2 = -100000
 
         deltaa = a1-a2
+        #normalization
         a = np.clip(deltaa, -10, 10)
         a = a/10
 
-
-
-
-
-        #todo: write better reward function
-
-        #print("stepcounter", self.stepCtr, "index=", self.index, "x=", x, "y=", y, "amount=", self.amount)
+        #Counts the reward
         if self.index < (self.amount-5):
             velocityRew = ((self.X[self.index + 5]-self.X[self.index])**2+ (self.Y[self.index + 5]-self.Y[self.index])**2) - ((self.X[self.index + 5]-x)**2 + (self.Y[self.index + 5]-y)**2)
             dist = (self.X[self.index + 5]-self.X[self.index])**2+ (self.Y[self.index + 5]-self.Y[self.index])**2
@@ -361,15 +350,15 @@ class f10RaceCarEnv():
                     self.index += 5
                 else:
                     self.index = 0
-        #velocityRew = x+y
-        #todo: nomalization of reward
-        #r_pos = (velocityRew * 1.0) / self.max_steps * 100
 
-        #print("velocityrew=", velocityRew, "r_pos=", r_pos, "dist=", dist, "currdist=", currdist)
         # Scale joint angles and make the policy observation
         scaled_joint_angles = self.rads_to_norm(newAngle)
 
+        #normalization of the velocity
+        velocity = velocity/100
         velocity_cliped = np.clip(velocity, 0, 1)
+
+        #Puting the output together
         env_obs = [scaled_joint_angles, velocity_cliped, a]
         for i in range(10):
             env_obs.append(hitArray[i])
@@ -381,17 +370,22 @@ class f10RaceCarEnv():
 
 
         return env_obs, r_pos, done
+
+    #Generates new track
     def generate_track(self):
         env_width = 100
         env_height = 100
 
         heightfieldData = [0] * (env_height * env_width)
+
+        # this would be used if random tracks were generated (now we use predefined tracks)
         '''datasetx, datasety, x1, y1, cx, cy = getdataset()
         datasetx = np.int64(datasetx)
         datasety = np.int64(datasety)
         x1 = np.int64(x1)
         y1 = np.int64(y1)'''
 
+        #gets points for the first track
         checkpointyx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsx'+str(self.trackindex)+'.npy')
         checkpointyy = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'checkpointsy'+str(self.trackindex)+'.npy')
         vnitrekx = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'inx'+str(self.trackindex)+'.npy')
@@ -412,7 +406,6 @@ class f10RaceCarEnv():
             self.trackindex = 5
         else:
             self.trackindex = 0
-
 
         first = True
         for i in range(len(datasetx)):
@@ -450,10 +443,11 @@ class f10RaceCarEnv():
         terrain = p.createMultiBody(mass, terrainShape)
         p.resetBasePositionAndOrientation(terrain, [49.5, 49.5, 0], [0, 0, 0, 1])
 
+    #resets the enviroment at the end of every epoch
     def reset(self):
         self.stepCtr = 0  # Counts the amount of steps done in the current episode
 
-        self.ctr += 1
+        self.ctr += 1   # Counts how many times was the current track used
 
         if not self.animate and self.ctr % self.iteration == 0: #generates new track
             try:
@@ -513,7 +507,6 @@ class f10RaceCarEnv():
 
 
         p.resetBasePositionAndOrientation(self.car, [self.X[self.reset_index], self.Y[self.reset_index], .3], [0, 0, angle, 1])
-        #print(angle)
 
         self.index = self.reset_index
 
@@ -538,6 +531,7 @@ class f10RaceCarEnv():
         return obs
 
 
+    #just a demo of the simulation
     def demo(self):
         while (True):
             a = -0.75

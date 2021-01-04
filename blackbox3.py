@@ -3,35 +3,31 @@ import os
 import random
 from f103 import f10RaceCarEnv
 
-
-# This script will run correctly assuming you have pythonpath pointing to the src directory. If you open a pycharm project inside the hw_1 file from sources then pythonpath should be set automatically
-# Otherwise you can export PYTHONPATH to add the src directory in the terminal as follows: export PYTHONPATH=${PYTHONPATH}:/home/.../hw_1
+#code from hw_1 was used and changed
 
 class PolicyNet():
     def __init__(self, obs_dim, act_dim):
+        # Initialization of weight parameters of the policy.
+        # w is the weight matrix and b is the bias
         self.w = np.zeros((act_dim, obs_dim))
         self.b = np.zeros(act_dim)
         self.obsDim = obs_dim
         self.actDim = act_dim
-        # Initialize your weight parameters of your policy.
-        # The simplest policy to implement would be a simple affine mapping y = xw+b, where x is the input,
-        # w is the weight matrix and b is the bias
 
     def set_params(self, w):
-        # This function takes in a list w and maps it to your policy parameters.
-        # The simplest way is to probably make an array out of the w vector and reshape it appropriately
+        # This function takes in a list w and maps it to policy parameters.
         dim = self.obsDim*self.actDim
         self.b = w[dim:]
         self.w = np.reshape(w[:dim], (self.actDim, self.obsDim))
 
     def get_params(self):
-        # This function returns a list w from your policy parameters. You can use numpy's flatten() function
+        # This function returns a list w from policy parameters.
         w = np.concatenate((self.w.flatten(), self.b.T))
         return w
 
     def forward(self, x):
+        # Performs the forward pass on the policy. Maps observation input x to action output a
         a = self.w @ x + self.b
-        # Performs the forward pass on your policy. Maps observation input x to action output a
         return a
 
 
@@ -46,10 +42,7 @@ def f_wrapper(env, policy):
             # Get action from policy
             act,vel = policy.forward(obs)
             # Step environment
-            #print("bef",vel)
             vel_cliped = np.clip(vel, 0, 1)
-            vel = vel_cliped*100
-            #print(vel)
             obs, rew, done = env.step(act, vel_cliped)
             reward += rew
         return reward
@@ -58,7 +51,7 @@ def f_wrapper(env, policy):
 
 
 def my_opt(f, w_init, iters):
-    # Your optimization algorithm. Takes in an evaluation function f, and initial solution guess w_init and returns
+    # Optimization algorithm. Takes in an evaluation function f, and initial solution guess w_init and returns
     # parameters w_best which 'solve' the problem to some degree.
     w_best = w_init
     r_best = 0
@@ -94,10 +87,10 @@ def test(w_best, max_steps=70, animate=False):
 
 if __name__ == "__main__":
     train = True
-    #train = False
+    train = False
     policy_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'f10_bbx33short100.npy')
     max_steps = 1000
-    N_training_iters = 100
+    N_training_iters = 500
     w_best = None
     if train:
         # Make the environment and your policy
